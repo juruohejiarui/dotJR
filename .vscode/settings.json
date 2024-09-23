@@ -1,6 +1,10 @@
 {
 	"files.associations": {
 		"desc.h": "c",
-		"cstdlib": "c"
+		"cstdlib": "c",
+		"array": "cpp",
+		"string": "cpp",
+		"string_view": "cpp",
+		"span": "cpp"
 	}
 }

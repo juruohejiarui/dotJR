@@ -11,6 +11,4 @@ u8 HInst_getExtType(HInstHdr *hdr);
 void HInst_setArg(HInstHdr *hdr, int idx, u64 arg);
 u64 HInst_getArg(HInstHdr *hdr, int idx);
 
-HInstHdr *HInst_read(const char *str, char **to);
-
 #endif

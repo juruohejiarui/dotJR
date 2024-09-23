@@ -1,0 +1,19 @@
+.global GlobalVar1
+	.quad 0x114514lu
+.global FuncPtr
+	.funcptr testVirtFunc
+
+.endglobal
+testVirtFunc:
+	setLocNum ,10
+	getLoc i64,0
+	getLoc i64,1
+	getLoc i64,2
+	add i64
+	sub i64
+	setLoc i64,3
+	getGlo i64,GlobalVar1
+	setarg ,1
+	getGlo i64,FuncPtr
+	callv
+	ret

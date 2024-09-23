@@ -6,8 +6,8 @@ enum HInstCmd {
 	HInstCmd_getLoc,	HInstCmd_getGlo,	HInstCmd_getMem,	HInstCmd_getArr,
 	HInstCmd_setLoc,	HInstCmd_setGlo,	HInstCmd_setMem,	HInstCmd_setArr,
 	HInstCmd_locAddr,	HInstCmd_gloAddr,	HInstCmd_memAddr,	HInstCmd_arrAddr,
-	HInstCmd_get,
-	HInstCmd_push,		HInstCmd_pop,
+	HInstCmd_get,		HInstCmd_set,
+	HInstCmd_push,		HInstCmd_pushfptr,	HInstCmd_pop,
 	HInstCmd_add,		HInstCmd_sub,		HInstCmd_mul,		HInstCmd_div,		HInstCmd_mod,
 	HInstCmd_and,		HInstCmd_or,		HInstCmd_xor,
 	HInstCmd_not,		HInstCmd_lnot,
@@ -24,18 +24,12 @@ enum HInstCmd {
 	HInstCmd_syscall,	
 };
 
-extern const char *Hinst_cmdStr[];
+#define HInst_cmdNum 49
 
-enum HInstHdr_Type {
-	HInstHdr_Type_u8, HInstHdr_Type_u16,	HInstHdr_Type_u32, 		HInstHdr_Type_u64,
-	HInstHdr_Type_i8, HInstHdr_Type_i16,	HInstHdr_Type_i32, 		HInstHdr_Type_i64,
-											HInstHdr_Type_f32 = 10, HInstHdr_Type_f64, 
-																	HInstHdr_Type_obj = 15, 
-	HInstHdr_Type_generic
-};
+extern const char *HInst_cmdStr[];
 
 /// @brief header of a HInst
-/// format : 
+/// @def format :
 /// [byte type]
 /// [word argFlag]
 /// 	[bit 7] isVarNum

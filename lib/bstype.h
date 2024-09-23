@@ -16,5 +16,23 @@ typedef long double f128;
 
 #define container(ptr, type, mem) ((type)(((u64)ptr) - &((type *)0)->mem))
 
-char *Lib_readData(const char *str, u64 *data, u8 *type);
+enum BsData_Type {
+	BsData_Type_u8, BsData_Type_u16,	BsData_Type_u32, 		BsData_Type_u64,
+	BsData_Type_i8, BsData_Type_i16,	BsData_Type_i32, 		BsData_Type_i64,
+										BsData_Type_f32 = 10, 	BsData_Type_f64, 
+																BsData_Type_obj = 15, 
+	BsData_Type_generic,				BsData_Type_void,
+};
+
+#define Lib_bsdataTypeNum 17
+extern const char *Lib_bsdataTypeStr[];
+
+static inline int Lib_getBsDataSize(int type) { return type >= BsData_Type_generic ? 0 : (1 << (type & 0x3)); }
+
+const char *Lib_readData(const char *str, u64 *data, u8 *type);
+
+static inline int Lib_isNumber(char ch) { return '0' <= ch && ch <= '9'; }
+static inline int Lib_isLetter(char ch) { return ('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z') || ch == '_' || ch == '@'; }
+static inline int Lib_isSeparator(char ch) { return ch == '\t' || ch == ' ' || ch == '\n'; }
+
 #endif
