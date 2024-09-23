@@ -1,0 +1,68 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "hasm-cmake",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "../../hasm"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/build/hasm"
+            },            
+        },
+        {
+            "label": "hasm-make",
+            "type": "shell",
+            "command": "make",
+            "args": [],
+            "options": {
+                "cwd": "${workspaceFolder}/build/hasm"
+            }, 
+            "dependsOn": ["hasm-cmake"]
+        },
+        {
+            "label": "hvm-cmake",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "../../hvm"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/build/hvm"
+            },            
+        },
+        {
+            "label": "hvm-make",
+            "type": "shell",
+            "command": "make",
+            "args": [],
+            "options": {
+                "cwd": "${workspaceFolder}/build/hvm"
+            }, 
+            "dependsOn": ["hvm-cmake"]
+        },
+        {
+            "label": "hcpl-cmake",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "../../hcpl"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/build/hcpl"
+            },            
+        },
+        {
+            "label": "hcpl-make",
+            "type": "shell",
+            "command": "make",
+            "args": [],
+            "options": {
+                "cwd": "${workspaceFolder}/build/hcpl"
+            }, 
+            "dependsOn": ["hcpl-cmake"]
+        }
+    ],
+}
