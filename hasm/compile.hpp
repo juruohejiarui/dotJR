@@ -10,11 +10,13 @@ struct CompilePackage {
 
 	std::map<std::string, File_FuncDesc *> func;
 	std::map<std::string, File_GloDesc *> glo;
-	std::map<std::string, File_GloDesc *> rely;
-	std::vector<File_UnfinishedDesc *> unf;
+	std::map<std::string, File_RelyDesc *> rely;
+	std::vector<File_SymbolUsageDesc *> usage;
 
 	std::vector< std::tuple<HInstHdr *, u64> > inst;
-	u64 curCodeSize;
+	std::vector< std::tuple<u64, u64, u8> > gloData;
+	std::map<std::string, u64> labels;
+	u64 curCodeSize, curGloSize;
 
 	CompilePackage();
 	~CompilePackage();

@@ -45,10 +45,12 @@ typedef struct File_RelyDesc {
 } __attribute__ ((packed)) File_RelyDesc;
 
 typedef struct File_FuncDesc {
-	u32 isOuter;
-	u64 offset; // for unfinished symbol, this field should be -1
+	u64 attribute;
 	union {
-		u64 innerOffset;
+		struct {
+			u32 offset;
+			u32 id;
+		} __attribute__ ((packed)) inner;
 		struct {
 			u32 relyId;
 			u32 funcId;
@@ -59,20 +61,22 @@ typedef struct File_FuncDesc {
 } __attribute__ ((packed)) File_FuncDesc;
 
 typedef struct File_GloDesc {
-	u32 isOuter;
-	u64 offset; // for unfinished symbol, this field should be -1
+	u64 attribute;
 	union {
-		u64 innerOffset;
+		struct {
+			u32 offset;
+			u32 id;
+		} __attribute__ ((packed)) inner;
 		struct {
 			u32 relyId;
-			u32 funcId;
+			u32 gloOffset;
 		} __attribute__ ((packed)) outer;
 	};
 	u32 fullNameLen;
-	char defVal[0];
+	char fullName[0];
 } __attribute__ ((packed)) File_GloDesc;
 
-typedef struct File_UnfinishedDesc {
+typedef struct File_SymbolUsageDesc {
 	u32 type;
 	#define File_UnfinishedDesc_Type_Code	1
 	#define File_UnfinishedDesc_Type_Glob	2
@@ -82,6 +86,6 @@ typedef struct File_UnfinishedDesc {
 		u32 descOffset;
 	} __attribute__ ((packed));
 	char fullName[0];
-} __attribute__ ((packed)) File_UnfinishedDesc;
+} __attribute__ ((packed)) File_SymbolUsageDesc;
 
 #endif

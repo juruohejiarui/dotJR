@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <fstream>
 #include "tokenize.hpp"
+#include "compile.hpp"
 
 int main(int argc, char **argv) {
 	if (argc == 1) {
@@ -10,9 +11,11 @@ int main(int argc, char **argv) {
 		std::vector<Hasm_Token> tokens;
 		Hasm_tokenize(str, tokens);
 
-		for (int i = 0; i < tokens.size(); i++) {
-			printf("%02d: type:%d data:%d dataType:%d strData:%s\n", i, tokens[i].type, tokens[i].data, tokens[i].dataType, tokens[i].strData.c_str());
-		}
+		// for (int i = 0; i < tokens.size(); i++) {
+		// 	printf("%02d: type:%d data:%d dataType:%d strData:%s\n", i, tokens[i].type, tokens[i].data, tokens[i].dataType, tokens[i].strData.c_str());
+		// }
+
+		Hasm_compile(tokens);
 	}
 	return 0;
 }

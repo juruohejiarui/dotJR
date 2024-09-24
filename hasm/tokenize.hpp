@@ -8,7 +8,7 @@ enum class Hasm_TokenType {
 };
 
 enum class Hasm_DefineType {
-	Byte, Word, Dword, Quad, String, Fill, FuncPtr, Global, EndGlobal
+	Byte, Word, Dword, Quad, String, Fill, Func, Global, EndDefine
 };
 
 #define Hasm_defineTypeNum 9

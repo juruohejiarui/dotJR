@@ -2,7 +2,7 @@
 #include "../lib/bstype.hpp"
 #include <iostream>
 
-const char *Hasm_defineTypeStr[] = { "byte", "word", "dword", "quad", "string", "fill", "funcptr", "global", "endglobal" };
+const char *Hasm_defineTypeStr[] = { "byte", "word", "dword", "quad", "string", "fill", "func", "global", "enddefine" };
 
 static int getCmdId(const std::string &cmdStr) {
 	for (int i = 0; i < HInst_cmdNum; i++) if (cmdStr == HInst_cmdStr[i]) return i;

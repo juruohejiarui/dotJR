@@ -1,9 +1,9 @@
 .global GlobalVar1
 	.quad 0x114514lu
 .global FuncPtr
-	.funcptr testVirtFunc
-
-.endglobal
+	.quad testVirtFunc
+.func testVirtFunc
+.enddefine
 testVirtFunc:
 	setLocNum ,10
 	getLoc i64,0

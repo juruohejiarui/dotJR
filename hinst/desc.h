@@ -6,8 +6,9 @@ enum HInstCmd {
 	HInstCmd_getLoc,	HInstCmd_getGlo,	HInstCmd_getMem,	HInstCmd_getArr,
 	HInstCmd_setLoc,	HInstCmd_setGlo,	HInstCmd_setMem,	HInstCmd_setArr,
 	HInstCmd_locAddr,	HInstCmd_gloAddr,	HInstCmd_memAddr,	HInstCmd_arrAddr,
+	HInstCmd_loadfptr,	
 	HInstCmd_get,		HInstCmd_set,
-	HInstCmd_push,		HInstCmd_pushfptr,	HInstCmd_pop,
+	HInstCmd_push,		HInstCmd_pop,
 	HInstCmd_add,		HInstCmd_sub,		HInstCmd_mul,		HInstCmd_div,		HInstCmd_mod,
 	HInstCmd_and,		HInstCmd_or,		HInstCmd_xor,
 	HInstCmd_not,		HInstCmd_lnot,
@@ -20,11 +21,11 @@ enum HInstCmd {
 	HInstCmd_switch,	
 	HInstCmd_call,		HInstCmd_callv,		HInstCmd_ret,		HInstCmd_retVal,
 	HInstCmd_setLocNum,
-	HInstCmd_setarg,	HInstCmd_getarg,
+	HInstCmd_setarg,	HInstCmd_getarg,	HInstCmd_setgener,	
 	HInstCmd_syscall,	
 };
 
-#define HInst_cmdNum 49
+#define HInst_cmdNum 50
 
 extern const char *HInst_cmdStr[];
 
