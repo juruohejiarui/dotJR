@@ -10,22 +10,35 @@ struct CompilePackage {
 
 	std::map<std::string, File_FuncDesc *> func;
 	std::map<std::string, File_GloDesc *> glo;
-	std::map<std::string, File_RelyDesc *> rely;
-	std::vector<File_SymbolUsageDesc *> usage;
+	std::vector<File_RefDesc *> ref;
 
 	std::vector< std::tuple<HInstHdr *, u64> > inst;
 	std::vector< std::tuple<u64, u64, u8> > gloData;
 	std::map<std::string, u64> labels;
 	u64 curCodeSize, curGloSize;
 
+	u8 *gloRawData;
+	u8 *codeRawData;
+
 	CompilePackage();
 	~CompilePackage();
+};
+
+struct RelyPackage {
+	File_ExecHeader execHdr;
+
+	std::map<std::string, File_FuncDesc *> func;
+	std::map<std::string, File_GloDesc *> glo;
+
+	RelyPackage();
+	~RelyPackage();
 };
 
 CompilePackage *Hasm_compile(const std::vector<Hasm_Token> &tokens);
 
 CompilePackage *Hasm_readCplPkg(const std::string &filePath);
 
-CompilePackage *Hasm_link(const std::vector<CompilePackage *> &pkg);
+void Hasm_writeCplPkg(const std::string &filePath, CompilePackage *pkg);
 
-void Hasm_writeExec(const std::string &filePath);
+void Hasm_link(const std::string &execPath, const std::vector<CompilePackage *> &pkg, const std::vector<RelyPackage *> &rely);
+

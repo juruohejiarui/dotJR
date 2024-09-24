@@ -3,6 +3,7 @@
 .global FuncPtr
 	.quad testVirtFunc
 .func testVirtFunc
+.func Fib
 .enddefine
 testVirtFunc:
 	setLocNum ,10
@@ -13,7 +14,38 @@ testVirtFunc:
 	sub i64
 	setLoc i64,3
 	getGlo i64,GlobalVar1
-	setarg ,1
+	setArg ,1
 	getGlo i64,FuncPtr
 	callv
 	ret
+
+Fib:
+	setLocNum ,1
+	getArg ,1
+	getLoc i32,0
+	push i32,1
+	cmp i32
+	jnz ,ENDIF_1
+	push i32,1
+	retVal i32
+@ENDIF_1:
+	getLoc i32,0
+	push i32,2
+	cmp i32
+	jnz ,ENDIF_2
+	push i32,1
+	retVal i32
+@ENDIF_2:
+	getLoc i32,0
+	push i32,1
+	sub i32
+	setArg ,1
+	call ,Fib
+	getLoc i32,0
+	push i32,2
+	sub i32
+	setArg ,1
+	call ,Fib
+	add i32
+	retVal
+	

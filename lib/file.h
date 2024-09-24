@@ -3,25 +3,23 @@
 
 #include "bstype.h"
 
+// the header for compiled obj file
 typedef struct File_ObjHeader {
-
 	u32 gloSymbolNum;
 	u32 funcSymbolNum;
-	u32 relySymbolNum;
-	u32 unfinishedSymbolNum;
+	u32 refSymbolNum;
 	
 	u64 gloSpaceSize;
 	u64 funcSpaceSize;
-	u64 relySpaceSize;
-	u64 unfinishedSpaceSize;
+	u64 refSpaceSize;
 
-	u64 codeLen;
+	u64 codeLen, gloLen;
 
 	u32 mainFuncSymbolId;
 } __attribute__ ((packed)) File_ObjHeader;
 
+// the header for executable file or library file
 typedef struct File_ExecHeader {
-	
 	u32 gloSymbolNum;
 	u32 funSymbolNum;
 	u32 relySymbolNum;
@@ -30,7 +28,7 @@ typedef struct File_ExecHeader {
 	u64 funcSpaceSize;
 	u64 relySpaceSize;
 
-	u64 codeLen;
+	u64 codeLen, gloLen;
 
 	u32 mainFuncSymbolId;
 } __attribute__ ((packed)) File_ExecHeader;
@@ -76,7 +74,9 @@ typedef struct File_GloDesc {
 	char fullName[0];
 } __attribute__ ((packed)) File_GloDesc;
 
-typedef struct File_SymbolUsageDesc {
+#define File_Desc_Attribute_Inner (1u << 0)
+
+typedef struct File_RefDesc {
 	u32 type;
 	#define File_UnfinishedDesc_Type_Code	1
 	#define File_UnfinishedDesc_Type_Glob	2
@@ -86,6 +86,13 @@ typedef struct File_SymbolUsageDesc {
 		u32 descOffset;
 	} __attribute__ ((packed));
 	char fullName[0];
-} __attribute__ ((packed)) File_SymbolUsageDesc;
+} __attribute__ ((packed)) File_RefDesc;
+
+#define File_nextDesc(cur, type) ({ \
+	type *tCur = (type *)(cur); \
+	(type *)((u64)tCur + sizeof(type) + tCur->fullNameLen); \
+})
+
+#define File_descLen(desc) ((desc)->fullNameLen + sizeof(*desc))
 
 #endif

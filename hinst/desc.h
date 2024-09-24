@@ -16,7 +16,7 @@ enum HInstCmd {
 	HInstCmd_new,		HInstCmd_arrnew,
 	HInstCmd_cmp,
 	HInstCmd_jmp,
-	HInstCmd_jz,		HInstCmd_jul,		HInstCmd_jus,		HInstCmd_jsl,	HInstCmd_jss,
+	HInstCmd_jz,		HInstCmd_jnz,		HInstCmd_jul,		HInstCmd_jus,		HInstCmd_jsl,	HInstCmd_jss,
 	HInstCmd_setFlag,	HInstCmd_pushFlag,	
 	HInstCmd_switch,	
 	HInstCmd_call,		HInstCmd_callv,		HInstCmd_ret,		HInstCmd_retVal,
@@ -25,7 +25,7 @@ enum HInstCmd {
 	HInstCmd_syscall,	
 };
 
-#define HInst_cmdNum 50
+#define HInst_cmdNum 51
 
 extern const char *HInst_cmdStr[];
 

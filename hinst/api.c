@@ -5,23 +5,23 @@ const char *HInst_cmdStr[] =  {
 	"getLoc",	"getGlo",	"getMem",	"getArr",
 	"setLoc",	"setGlo",	"setMem",	"setArr",
 	"locAddr",	"gloAddr",	"memAddr",	"arrAddr",
-	"loadfptr",
+	"loadFPtr",
 	"get",		"set",
 	"push",		"pop",
 	"add",		"sub",		"mul",		"div",		"mod",
 	"and",		"or",		"xor",
 	"not",		"lnot",
 	"inc",		"dec",
-	"new",		"arrnew",
+	"new",		"arrNew",
 	"cmp",
 	"jmp",
-	"jz",		"jul",		"jus",		"jsl",		"jss",
+	"jz",		"jnz",		"jul",		"jus",		"jsl",		"jss",
 	"setFlag",	"pushFlag",	
 	"switch",	
 	"call",		"callv",	"ret",		"retVal",
 	"setLocNum",
-	"setarg",	"getarg",	"setgener",	
-	"syscall",
+	"setArg",	"getArg",	"setGener",	
+	"sysCall",
 };
 
 u32 HInst_getSize(HInstHdr *hdr) {
@@ -29,7 +29,7 @@ u32 HInst_getSize(HInstHdr *hdr) {
 	if (hdr->type == BsData_Type_generic) sz += sizeof(u8);
 	if (hdr->varArgFlag.isVarNum)
 		sz += hdr->varArgFlag.argNum * (hdr->varArgFlag.isLong ? sizeof(u64) : sizeof(u32));
-	else sz += (8 << (hdr->bsArgFlag.argType & 0x3));
+	else sz += (1 << (hdr->bsArgFlag.argType & 0x3));
 	return sz;
 }
 
@@ -48,28 +48,28 @@ void HInst_setArg(HInstHdr *hdr, int idx, u64 arg) {
 	if (hdr->type == BsData_Type_generic) ptr = ((u8 *)ptr) + 1;
 	if (hdr->varArgFlag.isVarNum) {
 		if (hdr->varArgFlag.isLong)
-			*(((u32 *)ptr) + idx) = *(u32 *)arg;
+			*(((u32 *)ptr) + idx) = *(u32 *)&arg;
 		else *(((u64 *)ptr) + idx) = arg;
 	} else {
-		switch (hdr->type) {
+		switch (hdr->bsArgFlag.argType) {
 			case BsData_Type_u8 :
 			case BsData_Type_i8 :
-				*(u8 *)ptr = *(u8 *)arg;
+				*(u8 *)ptr = *(u8 *)&arg;
 				break;
 			case BsData_Type_u16:
 			case BsData_Type_i16:
-				*(u16 *)ptr = *(u16 *)arg;
+				*(u16 *)ptr = *(u16 *)&arg;
 				break;
 			case BsData_Type_i32:
 			case BsData_Type_u32:
 			case BsData_Type_f32:
-				*(u32 *)ptr = *(u32 *)arg;
+				*(u32 *)ptr = *(u32 *)&arg;
 				break;
 			case BsData_Type_i64:
 			case BsData_Type_u64:
 			case BsData_Type_f64:
 			case BsData_Type_obj:
-				*(u64 *)ptr = *(u64 *)arg;
+				*(u64 *)ptr = *(u64 *)&arg;
 				break;
 		}
 	}

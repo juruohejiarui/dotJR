@@ -41,6 +41,7 @@ bool Hasm_tokenize(const std::string &str, std::vector<Hasm_Token> &tokens) {
 			if (r + 1 < strSize && str[r + 1] == ':') {
 				tk.strData = subStr;
 				tk.type = Hasm_TokenType::Label;
+				r++;
 			} else {
 				tk.strData = subStr;
 				tk.type = Hasm_TokenType::StrData;

@@ -6,6 +6,12 @@
 		"string": "cpp",
 		"string_view": "cpp",
 		"span": "cpp",
-		"tuple": "cpp"
+		"tuple": "cpp",
+		"charconv": "cpp",
+		"compare": "cpp",
+		"functional": "cpp",
+		"type_traits": "cpp",
+		"utility": "cpp",
+		"variant": "cpp"
 	}
 }

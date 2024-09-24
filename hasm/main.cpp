@@ -15,7 +15,10 @@ int main(int argc, char **argv) {
 		// 	printf("%02d: type:%d data:%d dataType:%d strData:%s\n", i, tokens[i].type, tokens[i].data, tokens[i].dataType, tokens[i].strData.c_str());
 		// }
 
-		Hasm_compile(tokens);
+		CompilePackage *pkg = Hasm_compile(tokens);
+		Hasm_writeCplPkg("test1.hobj", pkg);
+
+		CompilePackage *pkgCpy = Hasm_readCplPkg("test1.hobj");
 	}
 	return 0;
 }

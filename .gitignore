@@ -1,1 +1,4 @@
 /build/
+/TestEnv/*.hobj
+/TestEnv/*.hexe
+/TestEnv/*.hlib

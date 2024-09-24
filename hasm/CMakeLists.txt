@@ -9,7 +9,7 @@ set(C_HEADER
 	../lib/bstype.h ../lib/file.h 
 	../hinst/desc.h ../hinst/api.h)
 set(CXX_SOURCE 
-	../lib/bstype.cpp
+	../lib/bstype.cpp ../lib/file.cpp
 	main.cpp tokenize.cpp compile.cpp)
 set(CXX_HEADER 
 	../lib/bstype.hpp ../lib/file.hpp
