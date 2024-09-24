@@ -27,6 +27,9 @@ struct CompilePackage {
 struct RelyPackage {
 	File_ExecHeader execHdr;
 
+	std::string path;
+	int isRel;
+
 	std::map<std::string, File_FuncDesc *> func;
 	std::map<std::string, File_GloDesc *> glo;
 
@@ -39,6 +42,8 @@ CompilePackage *Hasm_compile(const std::vector<Hasm_Token> &tokens);
 CompilePackage *Hasm_readCplPkg(const std::string &filePath);
 
 void Hasm_writeCplPkg(const std::string &filePath, CompilePackage *pkg);
+
+RelyPackage *Hasm_readRelyPkg(const std::string &relyPath);
 
 void Hasm_link(const std::string &execPath, const std::vector<CompilePackage *> &pkg, const std::vector<RelyPackage *> &rely);
 

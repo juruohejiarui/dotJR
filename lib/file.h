@@ -20,6 +20,7 @@ typedef struct File_ObjHeader {
 
 // the header for executable file or library file
 typedef struct File_ExecHeader {
+	u64 hash;
 	u32 gloSymbolNum;
 	u32 funSymbolNum;
 	u32 relySymbolNum;
@@ -34,47 +35,29 @@ typedef struct File_ExecHeader {
 } __attribute__ ((packed)) File_ExecHeader;
 
 typedef struct File_RelyDesc {
-	u32 isCustom;
-	u32 len;
-	union {
-		char pkgHash[0];
-		char cusPath[0];
-	};
+	u64 attribute;
+	u32 relyId;
+	u32 fullNameLen;
+	char fullName[0];
 } __attribute__ ((packed)) File_RelyDesc;
 
 typedef struct File_FuncDesc {
 	u64 attribute;
-	union {
-		struct {
-			u32 offset;
-			u32 id;
-		} __attribute__ ((packed)) inner;
-		struct {
-			u32 relyId;
-			u32 funcId;
-		} __attribute__ ((packed)) outer;
-	};
+	u64 offset;
+	u32 id;
 	u32 fullNameLen;
 	char fullName[0];
 } __attribute__ ((packed)) File_FuncDesc;
 
 typedef struct File_GloDesc {
 	u64 attribute;
-	union {
-		struct {
-			u32 offset;
-			u32 id;
-		} __attribute__ ((packed)) inner;
-		struct {
-			u32 relyId;
-			u32 gloOffset;
-		} __attribute__ ((packed)) outer;
-	};
+	u64 offset;
+	u32 id;
 	u32 fullNameLen;
 	char fullName[0];
 } __attribute__ ((packed)) File_GloDesc;
 
-#define File_Desc_Attribute_Inner (1u << 0)
+#define File_Desc_Attribute_Relevant	(1u << 0)
 
 typedef struct File_RefDesc {
 	u32 type;

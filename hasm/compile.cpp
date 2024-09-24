@@ -17,11 +17,24 @@ CompilePackage::~CompilePackage() {
 	if (gloRawData != nullptr) free(gloRawData);
 	if (codeRawData != nullptr) free(codeRawData);
 	for (auto &desc : ref)
-		if (desc != nullptr) free(desc);
+		if (desc != nullptr) {
+			free(desc);
+			break;
+		}
 	for (auto &fPir : func) 
-		if (fPir.second != nullptr) free(fPir.second);
+		if (fPir.second != nullptr) {
+			free(fPir.second);
+			break;
+		}
 	for (auto &gPir : glo)
-		if (gPir.second != nullptr) free(gPir.second);
+		if (gPir.second != nullptr) {
+			free(gPir.second);
+			break;
+		}
+}
+
+RelyPackage::RelyPackage() {
+	memset(&execHdr, 0, sizeof(execHdr));
 }
 
 static int makeInst(const std::vector<Hasm_Token> &tokens, int fr, int &to, CompilePackage *pkg) {
@@ -197,8 +210,8 @@ static int makeDefine(const std::vector<Hasm_Token> &tokens, int fr, int &to, Co
 				desc->fullNameLen = name.size();
 				strncpy(desc->fullName, name.c_str(), desc->fullNameLen);
 				desc->attribute = 0;
-				desc->inner.id = pkg->func.size();
-				desc->inner.offset = pkg->curGloSize;
+				desc->id = pkg->func.size();
+				desc->offset = pkg->curGloSize;
 				pkg->glo[name] = desc;
 				// update header
 				pkg->objHdr.gloSpaceSize += sizeof(File_GloDesc) + name.size() * sizeof(char);
@@ -222,8 +235,8 @@ static int makeDefine(const std::vector<Hasm_Token> &tokens, int fr, int &to, Co
 				desc->fullNameLen = name.size();
 				strncpy(desc->fullName, name.c_str(), name.size() * sizeof(char));
 				desc->attribute = 0;
-				desc->inner.id = pkg->func.size();
-				desc->inner.offset = (u32)-1;
+				desc->id = pkg->func.size();
+				desc->offset = (u32)-1;
 				pkg->func[name] = desc;
 				// update header
 				pkg->objHdr.funcSpaceSize += sizeof(File_FuncDesc) + name.size() * sizeof(char);
@@ -242,8 +255,8 @@ static int modifyFuncDesc(CompilePackage *pkg) {
 		// the label of this function is not defined in this file
 		if (iter == pkg->labels.end()) continue;
 		File_FuncDesc *func = fPir.second;
-		func->inner.offset = iter->second;
-		if (fPir.first == "Main") pkg->objHdr.mainFuncSymbolId = func->inner.id;
+		func->offset = iter->second;
+		if (fPir.first == "Main") pkg->objHdr.mainFuncSymbolId = func->id;
 	}
 	return 0;
 }
@@ -368,4 +381,9 @@ void Hasm_writeCplPkg(const std::string &filePath, CompilePackage *pkg) {
 	fwrite(pkg->codeRawData, pkg->objHdr.codeLen, 1, file);
 	fwrite(pkg->gloRawData, pkg->objHdr.gloLen, 1, file);
 	fclose(file);
+}
+
+RelyPackage *Hasm_readRelyPkg(const std::string &relyPath) {
+	RelyPackage *pkg = new RelyPackage();
+	return nullptr;
 }
