@@ -24,4 +24,4 @@ struct Hasm_Token {
 	std::string strData;
 };
 
-bool Hasm_tokenize(const std::string &str, std::vector<Hasm_Token> &tokens);
+int Hasm_tokenize(const std::string &str, std::vector<Hasm_Token> &tokens);

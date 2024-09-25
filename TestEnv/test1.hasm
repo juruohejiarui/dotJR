@@ -11,14 +11,14 @@ Fib:
 	cmp i32
 	jnz ,@ENDIF_1
 	push i32,1
-	retVal i32
+	retVal
 @ENDIF_1:
 	getLoc i32,0S
 	push i32,2
 	cmp i32
 	jnz ,@ENDIF_2
 	push i32,1
-	retVal i32
+	retVal
 @ENDIF_2:
 	getLoc i32,0S
 	push i32,1S
@@ -31,7 +31,7 @@ Fib:
 	setArg ,1
 	call ,Fib
 	add i32
-	retVal i32
+	retVal
 Main:
 	setLocNum ,10
 	sysCall ,1

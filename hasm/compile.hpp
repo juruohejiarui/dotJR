@@ -47,5 +47,5 @@ void Hasm_writeCplPkg(const std::string &filePath, CompilePackage *pkg);
 
 RelyPackage *Hasm_readRelyPkg(const std::string &relyPath);
 
-int Hasm_link(const std::string &execPath, const std::vector<CompilePackage *> &cplPkg, const std::vector<std::string> &relyPath);
+int Hasm_link(const std::string &execPath, const std::vector<std::string> &objPath, const std::vector<std::string> &relyPath);
 

@@ -52,7 +52,7 @@ static int makeInst(const std::vector<Hasm_Token> &tokens, int fr, int &to, Comp
 	hdr.cmd = tokens[fr].data - 1;
 	int instSize = sizeof(HInstHdr);
 	// this instruction has data type
-	if (tokens[fr + 1].dataType) {
+	if (fr + 1 < tokens.size() && tokens[fr + 1].dataType) {
 		hdr.type = tokens[fr + 1].dataType - 1;
 		to = fr + 1;
 		// need another token with type==Data to be the type Id
@@ -69,7 +69,7 @@ static int makeInst(const std::vector<Hasm_Token> &tokens, int fr, int &to, Comp
 		hdr.type = BsData_Type_void;
 		to = fr;
 	}
-	for (; tokens[to + 1].type == Hasm_TokenType::Comma; to += 2) {
+	for (; to + 1 < tokens.size() && tokens[to + 1].type == Hasm_TokenType::Comma; to += 2) {
 		// if this is a strData, then add an unfinished descriptor to the package
 		// otherwise, just add this argument to the list
 		argTokens.push_back(&tokens[to + 2]);
@@ -434,9 +434,12 @@ RelyPackage *Hasm_readRelyPkg(const std::string &relyPath) {
 	return pkg;
 }
 
-int Hasm_link(const std::string &execPath, const std::vector<CompilePackage *> &cplPkg, const std::vector<std::string> &relyPath) {
+int Hasm_link(const std::string &execPath, const std::vector<std::string> &objPath, const std::vector<std::string> &relyPath) {
+	std::vector<CompilePackage *> cplPkg;
 	std::vector<RelyPackage *> rely;
+	cplPkg.resize(objPath.size());
 	rely.resize(relyPath.size());
+	for (int i = 0; i < objPath.size(); i++) cplPkg[i] = Hasm_readCplPkg(objPath[i]);
 	for (int i = 0; i < relyPath.size(); i++) rely[i] = Hasm_readRelyPkg(relyPath[i]);
 	File_ExecHeader hdr;
 	memset(&hdr, 0, sizeof(File_ExecHeader));
@@ -450,6 +453,7 @@ int Hasm_link(const std::string &execPath, const std::vector<CompilePackage *> &
 				return std::make_tuple(0 | iter->second->id, true);
 			}
 		}
+		// then the label list
 		if (isCode) {
 			auto iter = curPkg->labels.find(refName);
 			if (iter != curPkg->labels.end())
@@ -461,6 +465,7 @@ int Hasm_link(const std::string &execPath, const std::vector<CompilePackage *> &
 			if (iter == pkg->glo.end()) continue;
 			return std::make_tuple(0 | (u64)iter->second->id, true);
 		}
+		// search on the rely list
 		u64 relyId = 0;
 		for (auto pkg : rely) {
 			relyId++;
