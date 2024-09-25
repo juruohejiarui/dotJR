@@ -1,30 +1,30 @@
 using Algorithm;
 
 namespace Algorithm {
-	public func<$T$> sort(array : T[], len : int, cmp : &int(T, T)) : void {
+	public func sort<$T$>(array : T[], len : int, cmp : &int(T, T)) : void {
 		sort(&array[0], &array[len - 1]);
 	}
-	public func<$T$> sort(st : &T, ed : &T, cmp : &int(T, T)) : void {
+	public func sort<$T$>(st : &T, ed : &T, cmp : &int(T, T)) : void {
 
 	}
-	public func<$T$> reverse(st : T*, ed : T*) : void : void {
+	public func reverse<$T$>(st : T*, ed : T*) : void : void {
 	}
-	public func<$T$> swap(x : T*, y : T*) : void {
-		T z = *x;
+	public func swap<$T$>(x : T*, y : T*) : void {
+		var z = *x;
 		*x = *y, *y = z;
 	}
-	public func<$T$> fill(st : T*, ed : T*, val : T) : void {
+	public func fill<$T$>(st : T*, ed : T*, val : T) : void {
 		while (true) {
 			*st = T;
 			st++;
 			if (st == ed) break;
 		}
 	}
-	public func<$T$> copy(src : T*, desc : T*, len : u64) : void {
+	public func copy<$T$>(src : T*, desc : T*, len : u64) : void {
 		for (var i = 0ul; i < len; i++, ++src, ++desc)
 			*desc = *src;
 	}
-	public class<$T$> Array {
+	public class Array<$T$> {
 		private var : T[] data;
 		private var : ulong size, capacity;
 		public func @init() : void{
@@ -64,8 +64,8 @@ namespace Algorithm {
 			}
 			return 0;
 		}
-		public func @get(idx : ulong) : T { return data[idx]; }
-		public func @set(idx : ulong, x : T) : T { data[idx] = x; }
+		public func __get__(idx : ulong) : T { return data[idx]; }
+		public func __set__(idx : ulong, x : T) : T { data[idx] = x; }
 		public func raw() : T[] { return data; }
 	}
 }

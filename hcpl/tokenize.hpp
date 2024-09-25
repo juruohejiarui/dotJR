@@ -19,6 +19,8 @@ struct BsData {
 	u8 type;
 };
 
+BsData Hcpl_calcConst(const BsData &x, const BsData &y);
+
 enum class Hcpl_TokenType {
 	Const, String, Iden, Oper, ExprEnd,
 	BrkSt, BrkEd, Keyword, 
@@ -61,10 +63,10 @@ enum class Hcpl_Oper {
 extern const int Hcpl_OperWeight[];
 
 enum class Hcpl_Keyword {
-	If, Else, While, For, Switch, Case, Break, Continue, Return, Using, Namespace, Class, FuncDef, VarDef, EnumDef, Public, Protected, Private, Override, 
+	If, Else, While, For, Switch, Case, Break, Continue, Return, Using, Namespace, Class, FuncDef, VarDef, EnumDef, Public, Protected, Private, Override, Fixed
 };
 
-#define Hcpl_keywordNum	19
+#define Hcpl_keywordNum	20
 extern const char *Hcpl_keywordStr[];
 
 enum class Hcpl_BrkType {
@@ -95,6 +97,7 @@ struct Hcpl_Token {
 };
 
 static inline bool isSpecOper(const Hcpl_Token &token, Hcpl_Oper opId) { return token.type == Hcpl_TokenType::Oper && token.opInfo.id == opId; }
+static inline bool isSpecKw(const Hcpl_Token &token, Hcpl_Keyword kwId) { return token.type == Hcpl_TokenType::Keyword && token.kwId == kwId; }
 static inline bool isSpecBrk(const Hcpl_Token &token, Hcpl_BrkType brkType) {
 	return token.type == ((int)brkType & 1 ? Hcpl_TokenType::BrkEd : Hcpl_TokenType::BrkSt) && token.brkInfo.type == brkType; 
 }

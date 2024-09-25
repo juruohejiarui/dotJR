@@ -21,7 +21,7 @@ const int Hcpl_OperWeight[] = {
 };
 
 const char *Hcpl_keywordStr[] = {
-	"if", "else", "while", "for", "switch", "case", "break", "continue", "return", "using", "namespace", "class", "func", "var", "enum", "public", "protected", "private", "override"
+	"if", "else", "while", "for", "switch", "case", "break", "continue", "return", "using", "namespace", "class", "func", "var", "enum", "public", "protected", "private", "override", "fixed"
 };
 
 static int getKwId(const std::string &str) {
@@ -29,7 +29,13 @@ static int getKwId(const std::string &str) {
 	return -1;
 }
 
-int Hcpl_tokenize(const std::string &str, std::vector<Hcpl_Token> &tokens) {
+BsData calcConst(const BsData &x, const BsData &y) {
+	u8 tgrType;
+	return BsData();
+}
+
+int Hcpl_tokenize(const std::string &str, std::vector<Hcpl_Token> &tokens)
+{
 	tokens.clear();
 	std::stack<size_t> brkStk;
 	int lineId = 1;

@@ -20,11 +20,12 @@ struct CplNode {
 	Hcpl_CplNodeType type;
 	// if this node is a definition node, then the token is the identifier token
 	Hcpl_Token token;
+	int locVarNum = 0;
 };
 
 struct ExprNode : CplNode {
 	CplNode *expRoot = nullptr;
-	int isConst;
+	BsData constData;
 };
 
 struct GenericNode : CplNode {
@@ -33,32 +34,7 @@ struct GenericNode : CplNode {
 
 struct OperNode : CplNode {
 	CplNode *lOperand = nullptr, *rOperand = nullptr;
-	int isConst;
-};
-
-struct NspNode : CplNode {
-	Hcpl_AccessType access;
-	// this field points to the namespace that it belongs to
-	CplNode *belong;
-	std::vector<std::string> path;
-	std::vector<CplNode *> usng;
-	std::vector<CplNode *> enm;
-	std::vector<CplNode *> cls;
-	std::vector<CplNode *> func;
-	std::vector<CplNode *> var;
-};
-
-struct ClsNode : CplNode {
-	Hcpl_AccessType access;
-	// this field is the type of the parent class
-	CplNode *parType;
-	// if this class is an inner class, then this field points to the class that it belongs to
-	CplNode *belong;
-	std::vector<CplNode *> usng;
-	std::vector<CplNode *> enm;
-	std::vector<CplNode *> cls;
-	std::vector<CplNode *> func;
-	std::vector<CplNode *> var;
+	BsData constData;
 };
 
 struct TypeNode : CplNode {
@@ -75,13 +51,6 @@ struct TypeNode : CplNode {
 	CplNode *gener;
 };
 
-struct FuncNode : CplNode {
-	Hcpl_AccessType access;
-	TypeNode *retType = nullptr;
-	CplNode *belong = nullptr, *content = nullptr;
-	std::vector<CplNode *> paramList;
-};
-
 struct EnumNode : CplNode {
 	Hcpl_AccessType access;
 	// if this enum class is an inner class, then this field points to the class, namespace or function that it belongs to
@@ -90,9 +59,13 @@ struct EnumNode : CplNode {
 	std::vector<CplNode *> valExpr;
 };
 
+#define Hcpl_DefNode_Attr_Override	(1ul << 0)
+#define Hcpl_DefNode_Attr_Fixed		(1ul << 1)
+#define Hcpl_DefNode_Attr_Local		(1ul << 2)
+
 struct VarNode : CplNode {
 	Hcpl_AccessType access;
-	TypeNode *type = nullptr;
+	TypeNode *varType = nullptr;
 	CplNode *initExpr = nullptr;
 };
 
@@ -100,19 +73,54 @@ struct UsingNode : CplNode {
 	std::vector<std::string> path;
 };
 
+struct FuncNode : CplNode {
+	Hcpl_AccessType access;
+	u64 attr;
+	TypeNode *retType = nullptr;
+	CplNode *belong = nullptr, *content = nullptr;
+	std::string fullName;
+	std::vector<CplNode *> tmplList;
+	std::vector<VarNode *> paramList;
+};
+
+struct ClsNode : CplNode {
+	Hcpl_AccessType access;
+	std::string fullName;
+	// this field is the type of the parent class
+	CplNode *parType;
+	// if this class is an inner class, then this field points to the class that it belongs to
+	CplNode *belong;
+	std::vector<CplNode *> tmplList;
+	std::vector<UsingNode *> usng;
+	std::vector<EnumNode *> enm;
+	std::vector<ClsNode *> cls;
+	std::vector<FuncNode *> func;
+	std::vector<VarNode *> var;
+};
+
+struct NspNode : CplNode {
+	Hcpl_AccessType access;
+	std::string fullName;
+	// this field points to the namespace that it belongs to
+	CplNode *belong;
+	std::vector<std::string> path;
+	std::vector<UsingNode *> usng;
+	std::vector<EnumNode *> enm;
+	std::vector<ClsNode *> cls;
+	std::vector<FuncNode *> func;
+	std::vector<VarNode *> var;
+};
+
 struct BlkNode : CplNode {
 	std::vector<CplNode *> child;
-	int locVarNum;
 };
 
 struct CondNode : CplNode {
 	CplNode *cond = nullptr, *succ = nullptr, *fail = nullptr;
-	int locVarNum = 0;
 };
 
 struct LoopNode : CplNode {
 	CplNode *init = nullptr, *cond = nullptr, *content = nullptr, *modify = nullptr;
-	int locVarNum = 0;
 };
 struct CtrlNode : CplNode {
 	CplNode *target = nullptr;
