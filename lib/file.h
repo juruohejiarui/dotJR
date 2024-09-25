@@ -7,10 +7,12 @@
 typedef struct File_ObjHeader {
 	u32 gloSymbolNum;
 	u32 funcSymbolNum;
+	u32 lblSymbolNum;
 	u32 refSymbolNum;
 	
 	u64 gloSpaceSize;
 	u64 funcSpaceSize;
+	u64 lblSpaceSize;
 	u64 refSpaceSize;
 
 	u64 codeLen, gloLen;
@@ -22,7 +24,7 @@ typedef struct File_ObjHeader {
 typedef struct File_ExecHeader {
 	u64 hash;
 	u32 gloSymbolNum;
-	u32 funSymbolNum;
+	u32 funcSymbolNum;
 	u32 relySymbolNum;
 
 	u64 gloSpaceSize;
@@ -56,6 +58,12 @@ typedef struct File_GloDesc {
 	u32 fullNameLen;
 	char fullName[0];
 } __attribute__ ((packed)) File_GloDesc;
+
+typedef struct File_LabelDesc {
+	u64 offset;
+	u32 fullNameLen;
+	char fullName[0];
+} __attribute__ ((packed)) File_LabelDesc;
 
 #define File_Desc_Attribute_Relevant	(1u << 0)
 

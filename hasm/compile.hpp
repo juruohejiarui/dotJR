@@ -20,6 +20,8 @@ struct CompilePackage {
 	u8 *gloRawData;
 	u8 *codeRawData;
 
+	u64 isFromFile;
+
 	CompilePackage();
 	~CompilePackage();
 };
@@ -45,5 +47,5 @@ void Hasm_writeCplPkg(const std::string &filePath, CompilePackage *pkg);
 
 RelyPackage *Hasm_readRelyPkg(const std::string &relyPath);
 
-void Hasm_link(const std::string &execPath, const std::vector<CompilePackage *> &pkg, const std::vector<RelyPackage *> &rely);
+int Hasm_link(const std::string &execPath, const std::vector<CompilePackage *> &cplPkg, const std::vector<std::string> &relyPath);
 

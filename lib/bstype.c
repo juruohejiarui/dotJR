@@ -57,43 +57,29 @@ const char *Lib_readData(const char *str, u64 *data, u8 *type) {
 			return str;
 		}
 	}
-	int isUnsigned = 0, isLong = 0, isShort = 0;
+	int isUnsigned = 0, isLong = 0, isShort = 0, isByte = 0;
 	for (; Lib_isLetter(*str); str++) {
 		switch (*str) {
 			case 'u' : isUnsigned = 1;	break;
 			case 'l' : isLong = 1;		break;
 			case 's' : isShort = 1;		break;
+			case 'S' : isByte = 1;		break;
 			default :
 				*type = BsData_Type_generic;
 				return str;
 		}
 	}
 	*data = 0;
-	switch (isUnsigned * 4 + isLong) {
-		case 0b000 :
-			*type = BsData_Type_i32;
-			*(i32 *)data = (i32)sign * tmp;
-			break;
-		case 0b010 :
-			*type = BsData_Type_i32;
-			*(i16 *)data = (i16)sign * tmp;
-			break;
-		case 0b001 :
-			*type = BsData_Type_i64;
-			*(i64 *)data = sign * tmp;
-			break;
-		case 0b100 :
-			*type = BsData_Type_u32;
-			*(u32 *)data = tmp;
-			break;
-		case 0b101 :
-			*type = BsData_Type_u64;
-			*(u64 *)data = tmp;
-			break;
-		case 0b110 :
-			*type = BsData_Type_i32;
-			*(u16 *)data = (u16)sign * tmp;
-			break;
+	switch (isUnsigned * 8 + + isByte * 4 + isShort * 2 + isLong) {
+		case 0b0001 : *type = BsData_Type_i64; *(i64 *)data = (i64)(sign * tmp); break;
+		case 0b0000 : *type = BsData_Type_i32; *(i32 *)data = (i32)(sign * tmp); break;
+		case 0b0010 : *type = BsData_Type_i16; *(i16 *)data = (i16)(sign * tmp); break;
+		case 0b0100 : *type = BsData_Type_i8;  *(u8 *)data = (i8)(sign * tmp); break;
+
+		case 0b1001 : *type = BsData_Type_u64; *(u64 *)data = tmp; break;
+		case 0b1000 : *type = BsData_Type_u32; *(u32 *)data = tmp; break;
+		case 0b1010 : *type = BsData_Type_u16; *(u16 *)data = tmp; break;
+		case 0b1100 : *type = BsData_Type_u8;  *(u8  *)data = tmp; break;
 		default :
 			*type = BsData_Type_generic;
 			break;

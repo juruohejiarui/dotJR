@@ -1,0 +1,20 @@
+.func gcd
+.enddefine
+
+gcd:
+	setLocNum ,2S
+	setArg ,2S
+	getLoc i64,1S
+	push i64,0l
+	cmp i64
+	jnz ,@ENDIF_1
+	getLoc i64,0S
+	retVal i64
+@ENDIF_1:
+	getLoc i64,1S
+	getLoc i64,0S
+	getLoc i64,1S
+	mod i64
+	setArg ,2S
+	call ,gcd
+	retVal i64

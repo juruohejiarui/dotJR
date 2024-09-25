@@ -5,8 +5,10 @@
 CompilePackage::CompilePackage() {
 	memset(&objHdr, 0, sizeof(objHdr));
 	curCodeSize = curGloSize = 0;
+	objHdr.mainFuncSymbolId = (u32)-1;
 	gloRawData = nullptr;
 	codeRawData = nullptr;
+	isFromFile = false;
 }
 
 CompilePackage::~CompilePackage() {
@@ -19,17 +21,17 @@ CompilePackage::~CompilePackage() {
 	for (auto &desc : ref)
 		if (desc != nullptr) {
 			free(desc);
-			break;
+			if (isFromFile) break;
 		}
 	for (auto &fPir : func) 
 		if (fPir.second != nullptr) {
 			free(fPir.second);
-			break;
+			if (isFromFile) break;
 		}
 	for (auto &gPir : glo)
 		if (gPir.second != nullptr) {
 			free(gPir.second);
-			break;
+			if (isFromFile) break;
 		}
 }
 
@@ -146,8 +148,8 @@ static int makeDefine(const std::vector<Hasm_Token> &tokens, int fr, int &to, Co
 	for (int st = to = fr; ; st = ++to) {
 		auto &fir = tokens[st];
 		if (fir.type != Hasm_TokenType::Define) {
-			printf("line %d: invalid syntax\n", fir.lineId);
-			return 2;
+			printf("line %d: invalid syntax.\n", fir.lineId);
+			return 0x2;
 		}
 		if ((Hasm_DefineType)fir.data == Hasm_DefineType::EndDefine) break;
 		switch ((Hasm_DefineType)fir.data) {
@@ -169,6 +171,9 @@ static int makeDefine(const std::vector<Hasm_Token> &tokens, int fr, int &to, Co
 					desc->type = File_UnfinishedDesc_Type_Glob;
 					strncpy(desc->fullName, sec.strData.c_str(), desc->fullNameLen);
 					desc->descOffset = pkg->curGloSize;
+					// update the header
+					pkg->objHdr.refSpaceSize += sizeof(File_RefDesc) + sizeof(char) * sec.strData.size();
+					pkg->objHdr.refSymbolNum++;
 					pkg->ref.push_back(desc);
 				} else if (sec.type == Hasm_TokenType::BsData) {
 					// add a tuple for this data
@@ -281,8 +286,14 @@ CompilePackage *Hasm_compile(const std::vector<Hasm_Token> &tokens) {
 					break;
 				}
 				pkg->labels.insert(std::make_pair(name, pkg->curCodeSize));
+				pkg->objHdr.lblSpaceSize += sizeof(File_LabelDesc) + name.size();
+				pkg->objHdr.lblSymbolNum++;
 				break;
 			}
+			default :
+				printf("line %d: invalid syntax\n", tokens[i].lineId);
+				res |= 0x2;
+				break;
 		}
 		if (res & 0x2) {
 			delete pkg;
@@ -332,6 +343,7 @@ CompilePackage *Hasm_compile(const std::vector<Hasm_Token> &tokens) {
 CompilePackage *Hasm_readCplPkg(const std::string &filePath) {
 	FILE *file = fopen(filePath.c_str(), "rb");
 	CompilePackage *pkg = new CompilePackage();
+	pkg->isFromFile = 1;
 	fread(&pkg->objHdr, sizeof(File_ObjHeader), 1, file);
 
 	// read the global descriptor table
@@ -349,6 +361,14 @@ CompilePackage *Hasm_readCplPkg(const std::string &filePath) {
 		auto fullName = File_FullNameStr(cur->fullName, cur->fullNameLen);
 		pkg->func[fullName] = cur;
 	}
+	
+	File_LabelDesc *lblDesc = (File_LabelDesc *)malloc(pkg->objHdr.lblSpaceSize);
+	fread(lblDesc, pkg->objHdr.lblSpaceSize, 1, file);
+	for (File_LabelDesc *cur = lblDesc; (u64)cur - (u64)lblDesc < pkg->objHdr.lblSpaceSize; cur = File_nextDesc(cur, File_LabelDesc)) {
+		auto fullName = File_FullNameStr(cur->fullName, cur->fullNameLen);
+		pkg->labels[fullName] = cur->offset;
+	}
+	free(lblDesc);
 
 	// read the reference descriptor table
 	File_RefDesc *refDesc = (File_RefDesc *)malloc(pkg->objHdr.refSpaceSize);
@@ -375,6 +395,15 @@ void Hasm_writeCplPkg(const std::string &filePath, CompilePackage *pkg) {
 		fwrite(gPir.second, File_descLen(gPir.second), 1, file);
 	for (auto &fPir : pkg->func)
 		fwrite(fPir.second, File_descLen(fPir.second), 1, file);
+	for (auto &lPir : pkg->labels) {
+		u64 size = sizeof(File_LabelDesc) + sizeof(char) * lPir.first.size();
+		File_LabelDesc *desc = (File_LabelDesc *)malloc(size);
+		desc->fullNameLen = lPir.first.size();
+		desc->offset = lPir.second;
+		strncpy(desc->fullName, lPir.first.c_str(), desc->fullNameLen);
+		fwrite(desc, size, 1, file);
+		free(desc);
+	}
 	for (auto &ref : pkg->ref) 
 		fwrite(ref, File_descLen(ref), 1, file);
 	
@@ -384,6 +413,147 @@ void Hasm_writeCplPkg(const std::string &filePath, CompilePackage *pkg) {
 }
 
 RelyPackage *Hasm_readRelyPkg(const std::string &relyPath) {
+	FILE *file = fopen(relyPath.c_str(), "rb");
 	RelyPackage *pkg = new RelyPackage();
-	return nullptr;
+	fread(&pkg->execHdr, sizeof(File_ExecHeader), 1, file);
+	File_GloDesc *gloDesc = (File_GloDesc *)malloc(pkg->execHdr.gloSpaceSize);
+	fread(gloDesc, pkg->execHdr.gloSpaceSize, 1, file);
+	for (File_GloDesc *cur = gloDesc; (u64)cur - (u64)gloDesc < pkg->execHdr.gloSpaceSize; cur = File_nextDesc(cur, File_GloDesc)) {
+		auto fullName = File_FullNameStr(cur->fullName, cur->fullNameLen);
+		pkg->glo[fullName] = cur;
+	}
+
+	File_FuncDesc *funcDesc = (File_FuncDesc *)malloc(pkg->execHdr.funcSpaceSize);
+	fread(funcDesc, pkg->execHdr.funcSpaceSize, 1, file);
+	for (File_FuncDesc *cur = funcDesc; (u64)cur - (u64)funcDesc < pkg->execHdr.funcSpaceSize; cur = File_nextDesc(cur, File_FuncDesc)) {
+		auto fullName = File_FullNameStr(cur->fullName, cur->fullNameLen);
+		pkg->func[fullName] = cur;
+	}
+
+	fclose(file);
+	return pkg;
+}
+
+int Hasm_link(const std::string &execPath, const std::vector<CompilePackage *> &cplPkg, const std::vector<std::string> &relyPath) {
+	std::vector<RelyPackage *> rely;
+	rely.resize(relyPath.size());
+	for (int i = 0; i < relyPath.size(); i++) rely[i] = Hasm_readRelyPkg(relyPath[i]);
+	File_ExecHeader hdr;
+	memset(&hdr, 0, sizeof(File_ExecHeader));
+
+	auto getRefData = [&](const std::string &refName, CompilePackage *curPkg, int isCode) -> std::tuple<u64, bool> {
+		// search on the function list of PKG
+		for (auto pkg : cplPkg) {
+			{
+				auto iter = pkg->func.find(refName);
+				if (iter == pkg->func.end()) continue;
+				return std::make_tuple(0 | iter->second->id, true);
+			}
+		}
+		if (isCode) {
+			auto iter = curPkg->labels.find(refName);
+			if (iter != curPkg->labels.end())
+				return std::make_tuple(iter->second, true);
+		}
+		// search on the global list of PKG
+		for (auto pkg : cplPkg) {
+			auto iter = pkg->glo.find(refName);
+			if (iter == pkg->glo.end()) continue;
+			return std::make_tuple(0 | (u64)iter->second->id, true);
+		}
+		u64 relyId = 0;
+		for (auto pkg : rely) {
+			relyId++;
+			{
+				auto iter = pkg->func.find(refName);
+				if (iter != pkg->func.end())
+					return std::make_tuple((relyId << 32) | iter->second->id, true);
+			}
+			{
+				auto iter = pkg->glo.find(refName);
+				if (iter != pkg->glo.end()) 
+					return std::make_tuple((relyId << 32) | iter->second->id, true);
+			}
+		}
+		return std::make_tuple(0, false);
+	};
+
+	// modify the offset of descriptors (excepts reference descriptors) in compile package
+	std::set<std::string> fullNameSet;
+	for (auto pkg : cplPkg) {
+		for (auto &fPir : pkg->func) {
+			if (fullNameSet.count(fPir.first)) {
+				printf("Link error: multiple definition of symbol \"%s\"\n", fPir.first.c_str());
+				return 1;
+			}
+			fullNameSet.insert(fPir.first);
+			fPir.second->offset += hdr.funcSpaceSize;
+			fPir.second->id += hdr.funcSymbolNum;
+		}
+		for (auto &gPir : pkg->glo) {
+			if (fullNameSet.count(gPir.first)) {
+				printf("Link error: multiple definition of symbol \"%s\"\n", gPir.first.c_str());
+				return 1;
+			}
+			fullNameSet.insert(gPir.first);
+			gPir.second->offset += hdr.gloSpaceSize;
+			gPir.second->id += hdr.gloSymbolNum;
+		}
+		hdr.funcSpaceSize += pkg->objHdr.funcSpaceSize;
+		hdr.funcSymbolNum += pkg->objHdr.funcSymbolNum;
+		hdr.gloSpaceSize += pkg->objHdr.gloSpaceSize;
+		hdr.gloSymbolNum += pkg->objHdr.gloSymbolNum;
+		hdr.codeLen += pkg->objHdr.codeLen;
+		hdr.gloLen += pkg->objHdr.gloLen;
+
+		if (pkg->objHdr.mainFuncSymbolId != (u32)-1)
+			hdr.mainFuncSymbolId = pkg->objHdr.mainFuncSymbolId;
+	}
+	// finish ref data
+	for (auto pkg : cplPkg) {
+		for (auto &ref : pkg->ref) {
+			std::string fullName = File_FullNameStr(ref->fullName, ref->fullNameLen);
+			auto data = getRefData(fullName, pkg, ref->type == File_UnfinishedDesc_Type_Code);
+			if (!std::get<1>(data)) {
+				printf("Link error: can not find refered data \"%s\"\n", fullName.c_str());
+				return 1;
+			}
+			switch (ref->type) {
+				case File_UnfinishedDesc_Type_Code :
+					*(u64 *)(pkg->codeRawData + ref->codeOffset) = std::get<0>(data);
+					break;
+				case File_UnfinishedDesc_Type_Glob :
+					*(u64 *)(pkg->gloRawData + ref->descOffset) = std::get<0>(data);
+					break;
+			}
+		}
+	}
+
+	// write down the data
+	FILE *file = fopen(execPath.c_str(), "wb");
+	fwrite(&hdr, sizeof(File_ExecHeader), 1, file);
+	// write global descriptor
+	for (auto pkg : cplPkg)
+		if (pkg->glo.size() > 0) fwrite(pkg->func.begin()->second, pkg->objHdr.gloSpaceSize, 1, file);
+	// write function descriptor
+	for (auto pkg : cplPkg)
+		if (pkg->glo.size() > 0) fwrite(pkg->glo.begin()->second, pkg->objHdr.funcSpaceSize, 1, file);
+	// write rely descriptor
+	int relyId = 0;
+	for (auto rely : relyPath) {
+		u64 size = sizeof(File_RelyDesc) + rely.size();
+		File_RelyDesc *desc = (File_RelyDesc *)malloc(size);
+		desc->fullNameLen = rely.size();
+		strncpy(desc->fullName, rely.c_str(), rely.size());
+		desc->relyId = ++relyId;
+		fwrite(desc, size, 1, file);
+		free(desc);
+	}
+	// write code
+	for (auto pkg : cplPkg)
+		fwrite(pkg->codeRawData, pkg->objHdr.codeLen, 1, file);
+	for (auto pkg : cplPkg)
+		fwrite(pkg->gloRawData, pkg->objHdr.gloLen, 1, file);
+ 	fclose(file);
+	return 0;
 }
