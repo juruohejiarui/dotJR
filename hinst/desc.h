@@ -14,9 +14,10 @@ enum HInstCmd {
 	HInstCmd_addMov, 	HInstCmd_subMov,	HinstCmd_mulMov,	HInstCmd_divMov,	HInstCmd_modMov,
 	HInstCmd_AndMov,	HInstCmd_orMov,		HInstCmd_xorMox,	HInstCmd_shlMov,	HinstCmd_shrMov,
 	HInstCmd_not,		HInstCmd_lnot,
-	HInstCmd_inc,		HInstCmd_dec,
+	HInstCmd_inc,		HInstCmd_dec,		
+	HInstCmd_ptrAdd,	HInstCmd_ptrSub,	HInstCmd_ptrInc,	HInstCmd_ptrDec,
 	HInstCmd_new,		HInstCmd_arrnew,
-	HInstCmd_cmp,
+	HInstCmd_cmp,		HInstCmd_ptrCmp,
 	HInstCmd_jmp,
 	HInstCmd_jz,		HInstCmd_jnz,		HInstCmd_jul,		HInstCmd_jus,		HInstCmd_jsl,	HInstCmd_jss,
 	HInstCmd_setFlag,	HInstCmd_pushFlag,	
@@ -27,7 +28,7 @@ enum HInstCmd {
 	HInstCmd_sysCall,	
 };
 
-#define HInst_cmdNum 63
+#define HInst_cmdNum 68
 
 extern const char *HInst_cmdStr[];
 

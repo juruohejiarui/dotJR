@@ -39,6 +39,17 @@ RelyPackage::RelyPackage() {
 	memset(&execHdr, 0, sizeof(execHdr));
 }
 
+RelyPackage::~RelyPackage() {
+	for (auto &desc : func) if (desc.second != nullptr) {
+		free(desc.second);
+		break;
+	}
+	for (auto &desc : glo) if (desc.second != nullptr) {
+		free(desc.second);
+		break;
+	}
+}
+
 static int makeInst(const std::vector<Hasm_Token> &tokens, int fr, int &to, CompilePackage *pkg) {
 	HInstHdr hdr;
 	u32 extType = -1;
@@ -441,8 +452,10 @@ int Hasm_link(const std::string &execPath, const std::vector<std::string> &objPa
 	rely.resize(relyPath.size());
 	for (int i = 0; i < objPath.size(); i++) cplPkg[i] = Hasm_readCplPkg(objPath[i]);
 	for (int i = 0; i < relyPath.size(); i++) rely[i] = Hasm_readRelyPkg(relyPath[i]);
+	
 	File_ExecHeader hdr;
 	memset(&hdr, 0, sizeof(File_ExecHeader));
+	hdr.mainFuncSymbolId = (u32)-1;
 
 	auto getRefData = [&](const std::string &refName, CompilePackage *curPkg, int isCode) -> std::tuple<u64, bool> {
 		// search on the function list of PKG
@@ -504,15 +517,16 @@ int Hasm_link(const std::string &execPath, const std::vector<std::string> &objPa
 			gPir.second->offset += hdr.gloSpaceSize;
 			gPir.second->id += hdr.gloSymbolNum;
 		}
+		// update the main function symbol id
+		if (pkg->objHdr.mainFuncSymbolId != (u32)-1)
+			hdr.mainFuncSymbolId = pkg->objHdr.mainFuncSymbolId + hdr.funcSymbolNum;
+		// update the header
 		hdr.funcSpaceSize += pkg->objHdr.funcSpaceSize;
 		hdr.funcSymbolNum += pkg->objHdr.funcSymbolNum;
 		hdr.gloSpaceSize += pkg->objHdr.gloSpaceSize;
 		hdr.gloSymbolNum += pkg->objHdr.gloSymbolNum;
 		hdr.codeLen += pkg->objHdr.codeLen;
 		hdr.gloLen += pkg->objHdr.gloLen;
-
-		if (pkg->objHdr.mainFuncSymbolId != (u32)-1)
-			hdr.mainFuncSymbolId = pkg->objHdr.mainFuncSymbolId;
 	}
 	// finish ref data
 	for (auto pkg : cplPkg) {
@@ -559,6 +573,10 @@ int Hasm_link(const std::string &execPath, const std::vector<std::string> &objPa
 		fwrite(pkg->codeRawData, pkg->objHdr.codeLen, 1, file);
 	for (auto pkg : cplPkg)
 		fwrite(pkg->gloRawData, pkg->objHdr.gloLen, 1, file);
+
+	for (auto pkg : cplPkg) delete pkg;
+	for (auto pkg : rely) delete pkg;
+
  	fclose(file);
 	return 0;
 }

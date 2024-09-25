@@ -12,7 +12,7 @@ const char *Lib_bsdataTypeStr[] = {
 const char *Lib_readData(const char *str, u64 *data, u8 *type) {
 	f64 f64Data = 0.0, fBase = 1;
 	if (!isNumber(*str) && *str != '-') {
-		*type = BsData_Type_generic;
+		*type = BsData_Type_void;
 		return str;
 	}
 	int sign = 1, base = 10;
@@ -28,7 +28,7 @@ const char *Lib_readData(const char *str, u64 *data, u8 *type) {
 	for (; isNumber(*str); *str++) {
 		int dig = ('a' <= *str && *str <= 'f' ? *str - 'a' : ('A' <= *str && *str <= 'F' ? *str - 'A' : *str - '0'));
 		if (dig < 0 || dig >= base) {
-			*type = BsData_Type_generic;
+			*type = BsData_Type_void;
 			return str;
 		}
 		tmp = tmp * base + dig;
@@ -38,7 +38,7 @@ const char *Lib_readData(const char *str, u64 *data, u8 *type) {
 		fBase = 1.0 / base;
 		for (*str; isNumber(*str); *str++, fBase /= base) {
 			int dig = ('a' <= *str && *str <= 'f' ? *str - 'a' : ('A' <= *str && *str <= 'F' ? *str - 'A' : *str - '0'));
-			if (dig < 0 || dig >= base) { *type = BsData_Type_generic; return str; }
+			if (dig < 0 || dig >= base) { *type = BsData_Type_void; return str; }
 			f64Data = f64Data + fBase * dig;
 		}
 		// this is a float32 data
@@ -54,7 +54,7 @@ const char *Lib_readData(const char *str, u64 *data, u8 *type) {
 			*(f64 *)data = sign * f64Data;
 			return str;
 		} else {
-			*type = BsData_Type_generic;
+			*type = BsData_Type_void;
 			return str;
 		}
 	}
@@ -66,7 +66,7 @@ const char *Lib_readData(const char *str, u64 *data, u8 *type) {
 			case 's' : isShort = 1;		break;
 			case 'S' : isByte = 1;		break;
 			default :
-				*type = BsData_Type_generic;
+				*type = BsData_Type_void;
 				return str;
 		}
 	}
@@ -82,7 +82,7 @@ const char *Lib_readData(const char *str, u64 *data, u8 *type) {
 		case 0b1010 : *type = BsData_Type_u16; *(u16 *)data = tmp; break;
 		case 0b1100 : *type = BsData_Type_u8;  *(u8  *)data = tmp; break;
 		default :
-			*type = BsData_Type_generic;
+			*type = BsData_Type_void;
 			break;
 	}
 	return str;

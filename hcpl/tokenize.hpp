@@ -16,7 +16,7 @@ struct BsData {
 		f32 f32Data;
 		f64 f64Data;
 	};
-	int type;
+	u8 type;
 };
 
 enum class Hcpl_TokenType {
@@ -40,7 +40,7 @@ enum class Hcpl_Oper {
 	// weight 7
 	And,
 	// weight 8
-	Eq, Ne,
+	Eq, Ne, Oeq, One,
 	// weight 9
 	Gt, Ls, Ge, Le,
 	// weight 10
@@ -57,14 +57,14 @@ enum class Hcpl_Oper {
 	Scope
 };
 
-#define Hcpl_operNum	44
+#define Hcpl_operNum	46
 extern const int Hcpl_OperWeight[];
 
 enum class Hcpl_Keyword {
-	If, Else, While, For, Switch, Case, Break, Continue, Return, Class, FuncDef, VarDef, EnumDef, Override, 
+	If, Else, While, For, Switch, Case, Break, Continue, Return, Using, Namespace, Class, FuncDef, VarDef, EnumDef, Public, Protected, Private, Override, 
 };
 
-#define Hcpl_keywordNum	14
+#define Hcpl_keywordNum	19
 extern const char *Hcpl_keywordStr[];
 
 enum class Hcpl_BrkType {
@@ -87,11 +87,16 @@ struct Hcpl_Token {
 		} opInfo;
 		Hcpl_Keyword kwId;
 		struct {
-			u32 pir;
+			size_t pir;
 			Hcpl_BrkType type;
 		} brkInfo;
 	};
 	std::string strData;
 };
 
-int Hasm_tokenize(const std::string &str, std::vector<Hcpl_Token> &tokens);
+static inline bool isSpecOper(const Hcpl_Token &token, Hcpl_Oper opId) { return token.type == Hcpl_TokenType::Oper && token.opInfo.id == opId; }
+static inline bool isSpecBrk(const Hcpl_Token &token, Hcpl_BrkType brkType) {
+	return token.type == ((int)brkType & 1 ? Hcpl_TokenType::BrkEd : Hcpl_TokenType::BrkSt) && token.brkInfo.type == brkType; 
+}
+
+int Hcpl_tokenize(const std::string &str, std::vector<Hcpl_Token> &tokens);

@@ -10,11 +10,11 @@ set(C_HEADER
 	../hinst/desc.h ../hinst/api.h)
 set(CXX_SOURCE 
 	../lib/bstype.cpp ../lib/file.cpp
-	main.cpp tokenize.cpp)
+	main.cpp tokenize.cpp cpltree.cpp)
 set(CXX_HEADER 
 	../lib/bstype.hpp ../lib/file.hpp
 	../hinst/api.hpp 
-	tokenize.hpp)
+	tokenize.hpp cpltree.hpp)
 
 add_executable(hcpl ${C_SOURCE} ${C_HEADER} ${CXX_SOURCE} ${CXX_HEADER})
 
