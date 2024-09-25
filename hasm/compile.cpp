@@ -18,21 +18,30 @@ CompilePackage::~CompilePackage() {
 	}
 	if (gloRawData != nullptr) free(gloRawData);
 	if (codeRawData != nullptr) free(codeRawData);
-	for (auto &desc : ref)
-		if (desc != nullptr) {
-			free(desc);
-			if (isFromFile) break;
+	if (isFromFile) {
+		File_FuncDesc *firDesc = (File_FuncDesc *)(u64)-1;
+		for (auto &desc : func) if (desc.second != nullptr) {
+			firDesc = (File_FuncDesc *)std::min((u64)firDesc, (u64)desc.second);
+			break;
 		}
-	for (auto &fPir : func) 
-		if (fPir.second != nullptr) {
-			free(fPir.second);
-			if (isFromFile) break;
+		if (firDesc != (File_FuncDesc *)(u64)-1) free(firDesc);
+		firDesc = (File_FuncDesc *)(u64)-1;
+		for (auto &desc : glo) if (desc.second != nullptr) {
+			firDesc = (File_FuncDesc *)std::min((u64)firDesc, (u64)desc.second);
+			break;
 		}
-	for (auto &gPir : glo)
-		if (gPir.second != nullptr) {
-			free(gPir.second);
-			if (isFromFile) break;
-		}
+		if (firDesc != (File_FuncDesc *)(u64)-1) free(firDesc);
+		if (ref.size()) free(ref[0]);
+	} else {
+		for (auto &fPir : func) 
+			if (fPir.second != nullptr)
+				free(fPir.second);
+		for (auto &gPir : glo)
+			if (gPir.second != nullptr)
+				free(gPir.second);
+		for (auto &desc : ref) free(desc);
+	}
+	
 }
 
 RelyPackage::RelyPackage() {
@@ -45,13 +54,13 @@ RelyPackage::~RelyPackage() {
 		firDesc = (File_FuncDesc *)std::min((u64)firDesc, (u64)desc.second);
 		break;
 	}
-	free(firDesc);
+	if (firDesc != (File_FuncDesc *)(u64)-1) free(firDesc);
 	firDesc = (File_FuncDesc *)(u64)-1;
 	for (auto &desc : glo) if (desc.second != nullptr) {
 		firDesc = (File_FuncDesc *)std::min((u64)firDesc, (u64)desc.second);
 		break;
 	}
-	free(firDesc);
+	if (firDesc != (File_FuncDesc *)(u64)-1) free(firDesc);
 }
 
 static int makeInst(const std::vector<Hasm_Token> &tokens, int fr, int &to, CompilePackage *pkg) {
