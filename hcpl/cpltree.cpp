@@ -155,9 +155,9 @@ static int parseKeyword(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t
 }
 
 static int parseExpr(const std::vector<Hcpl_Token> &token, size_t fr, size_t to, CplNode *&root, CplNode *father) {
-	std::stack< std::tuple<OperNode *, u32> > opers;
-	std::stack< std::tuple<CplNode *> > idens;
-	
+	std::stack< std::pair<OperNode *, u32> > opers;
+	std::stack<CplNode *> idens;
+
 	return 0;
 }
 

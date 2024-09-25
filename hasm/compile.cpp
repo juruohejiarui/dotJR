@@ -40,14 +40,18 @@ RelyPackage::RelyPackage() {
 }
 
 RelyPackage::~RelyPackage() {
+	File_FuncDesc *firDesc = (File_FuncDesc *)(u64)-1;
 	for (auto &desc : func) if (desc.second != nullptr) {
-		free(desc.second);
+		firDesc = (File_FuncDesc *)std::min((u64)firDesc, (u64)desc.second);
 		break;
 	}
+	free(firDesc);
+	firDesc = (File_FuncDesc *)(u64)-1;
 	for (auto &desc : glo) if (desc.second != nullptr) {
-		free(desc.second);
+		firDesc = (File_FuncDesc *)std::min((u64)firDesc, (u64)desc.second);
 		break;
 	}
+	free(firDesc);
 }
 
 static int makeInst(const std::vector<Hasm_Token> &tokens, int fr, int &to, CompilePackage *pkg) {
@@ -505,7 +509,7 @@ int Hasm_link(const std::string &execPath, const std::vector<std::string> &objPa
 				return 1;
 			}
 			fullNameSet.insert(fPir.first);
-			fPir.second->offset += hdr.funcSpaceSize;
+			fPir.second->offset += hdr.codeLen;
 			fPir.second->id += hdr.funcSymbolNum;
 		}
 		for (auto &gPir : pkg->glo) {
@@ -514,7 +518,7 @@ int Hasm_link(const std::string &execPath, const std::vector<std::string> &objPa
 				return 1;
 			}
 			fullNameSet.insert(gPir.first);
-			gPir.second->offset += hdr.gloSpaceSize;
+			gPir.second->offset += hdr.gloLen;
 			gPir.second->id += hdr.gloSymbolNum;
 		}
 		// update the main function symbol id
@@ -553,10 +557,10 @@ int Hasm_link(const std::string &execPath, const std::vector<std::string> &objPa
 	fwrite(&hdr, sizeof(File_ExecHeader), 1, file);
 	// write global descriptor
 	for (auto pkg : cplPkg)
-		if (pkg->glo.size() > 0) fwrite(pkg->func.begin()->second, pkg->objHdr.gloSpaceSize, 1, file);
+		if (pkg->glo.size() > 0) fwrite(pkg->glo.begin()->second, pkg->objHdr.gloSpaceSize, 1, file);
 	// write function descriptor
 	for (auto pkg : cplPkg)
-		if (pkg->glo.size() > 0) fwrite(pkg->glo.begin()->second, pkg->objHdr.funcSpaceSize, 1, file);
+		if (pkg->func.size() > 0) fwrite(pkg->func.begin()->second, pkg->objHdr.funcSpaceSize, 1, file);
 	// write rely descriptor
 	int relyId = 0;
 	for (auto rely : relyPath) {
