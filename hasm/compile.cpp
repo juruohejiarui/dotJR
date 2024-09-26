@@ -71,7 +71,7 @@ static int makeInst(const std::vector<Hasm_Token> &tokens, int fr, int &to, Comp
 	memset(&hdr, 0, sizeof(hdr));
 	if (!tokens[fr].data) {
 		printf("line %d: invalid syntax \"%s\"", tokens[fr].lineId, tokens[fr].strData.c_str());
-		return 2;
+		return Res_SeriousError;
 	}
 	hdr.cmd = tokens[fr].data - 1;
 	int instSize = sizeof(HInstHdr);
@@ -83,7 +83,7 @@ static int makeInst(const std::vector<Hasm_Token> &tokens, int fr, int &to, Comp
 		if (hdr.type == BsData_Type_generic) {
 			if (tokens[fr + 2].type != Hasm_TokenType::BsData) {
 				printf("line %d: instruction with generic flag requires a type", tokens[fr].lineId);
-				return 2;
+				return Res_SeriousError;
 			}
 			to = fr + 2;
 			extType = tokens[to].data;
@@ -99,7 +99,7 @@ static int makeInst(const std::vector<Hasm_Token> &tokens, int fr, int &to, Comp
 		argTokens.push_back(&tokens[to + 2]);
 		if (tokens[to + 2].type != Hasm_TokenType::BsData && tokens[to + 2].type != Hasm_TokenType::StrData) {
 			printf("line %d: invalid syntax for argument list \"%s\"", tokens[to + 2].lineId, tokens[to + 2].strData);
-			return 2;
+			return Res_SeriousError;
 		}
 	}
 	if (!argTokens.size()) {
@@ -173,7 +173,7 @@ static int makeDefine(const std::vector<Hasm_Token> &tokens, int fr, int &to, Co
 		auto &fir = tokens[st];
 		if (fir.type != Hasm_TokenType::Define) {
 			printf("line %d: invalid syntax.\n", fir.lineId);
-			return 0x2;
+			return Res_SeriousError;
 		}
 		if ((Hasm_DefineType)fir.data == Hasm_DefineType::EndDefine) break;
 		switch ((Hasm_DefineType)fir.data) {
@@ -187,7 +187,7 @@ static int makeDefine(const std::vector<Hasm_Token> &tokens, int fr, int &to, Co
 				if (sec.type == Hasm_TokenType::StrData) {
 					if (size != 8) {
 						printf("line %d: data size for symbol \"%s\" must be 8 bytes\n", sec.lineId, sec.strData.c_str());
-						return 0x2;
+						return Res_SeriousError;
 					}
 					// add a reference descriptor
 					File_RefDesc *desc = (File_RefDesc *)malloc(sizeof(File_RefDesc) + sizeof(char) * sec.strData.size());
@@ -204,7 +204,7 @@ static int makeDefine(const std::vector<Hasm_Token> &tokens, int fr, int &to, Co
 					pkg->gloData.push_back(std::make_tuple(pkg->curGloSize, sec.data, (u8)fir.data));
 				} else {
 					printf("line %d: invalid syntax\n");
-					return 0x2;
+					return Res_SeriousError;
 				}
 				pkg->curGloSize += size;
 				break;
@@ -218,7 +218,7 @@ static int makeDefine(const std::vector<Hasm_Token> &tokens, int fr, int &to, Co
 					pkg->curGloSize += size;
 				} else {
 					printf("line %d: invalid syntax\n");
-					return 0x2;
+					return Res_SeriousError;
 				}
 				break;
 			}
@@ -228,7 +228,7 @@ static int makeDefine(const std::vector<Hasm_Token> &tokens, int fr, int &to, Co
 				auto &sec = tokens[++to];
 				if (sec.type != Hasm_TokenType::StrData) {
 					printf("line %d: invalid syntax\n");
-					return 0x2;
+					return Res_SeriousError;
 				}
 				auto &name = sec.strData;
 				if (pkg->glo.count(name)) {
@@ -316,10 +316,10 @@ CompilePackage *Hasm_compile(const std::vector<Hasm_Token> &tokens) {
 			}
 			default :
 				printf("line %d: invalid syntax\n", tokens[i].lineId);
-				res |= 0x2;
+				res |= Res_SeriousError;
 				break;
 		}
-		if (res & 0x2) {
+		if (res & Res_SeriousError) {
 			delete pkg;
 			return nullptr;
 		}

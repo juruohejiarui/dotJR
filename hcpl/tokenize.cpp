@@ -51,11 +51,11 @@ int Hcpl_tokenize(const std::string &str, std::vector<Hcpl_Token> &tokens)
 			tk.strData = subStr;
 			if (subStr == "new") {
 				tk.type	= Hcpl_TokenType::Oper;
-				tk.opInfo.id = Hcpl_Oper::New;
+				tk.opInfo.type = OperType::New;
 			} else {
 				int kwId = getKwId(subStr);
 				if (kwId != -1) {
-					tk.kwId = (Hcpl_Keyword)kwId;
+					tk.kwType = (KeywordType)kwId;
 					tk.type = Hcpl_TokenType::Keyword;
 				} else tk.type = Hcpl_TokenType::Iden;
 			}
@@ -66,141 +66,141 @@ int Hcpl_tokenize(const std::string &str, std::vector<Hcpl_Token> &tokens)
 			Lib_readData(tk.strData.c_str(), &tk.data.u64Data, &tk.data.type);
 			if (type == BsData_Type_void) {
 				printf("line %d: invalid syntax on \"%s\"", lineId, tk.strData.c_str());
-				return 1;
+				return Res_Error;
 			}
 		} else {
 			switch (str[l]) {
 				case '=' :
 					tk.type = Hcpl_TokenType::Oper;
 					if (str[l + 1] == '=') {
-						if (str[l + 2] == '=') tk.opInfo.id = Hcpl_Oper::Oeq, r += 2;
-						else tk.opInfo.id = Hcpl_Oper::Eq, r++;
-					} else tk.opInfo.id = Hcpl_Oper::Ass;
+						if (str[l + 2] == '=') tk.opInfo.type = OperType::Oeq, r += 2;
+						else tk.opInfo.type = OperType::Eq, r++;
+					} else tk.opInfo.type = OperType::Ass;
 					break;
 				case '+' :
 					tk.type = Hcpl_TokenType::Oper;
-					if (str[l + 1] == '+') tk.opInfo.id = Hcpl_Oper::SInc, r++;
-					else if (str[l + 1] == '=') tk.opInfo.id = Hcpl_Oper::AddAss, r++;
-					else tk.opInfo.id = Hcpl_Oper::Add;
+					if (str[l + 1] == '+') tk.opInfo.type = OperType::SInc, r++;
+					else if (str[l + 1] == '=') tk.opInfo.type = OperType::AddAss, r++;
+					else tk.opInfo.type = OperType::Add;
 					break;
 				case '-' :
 					tk.type = Hcpl_TokenType::Oper;
-					if (str[l + 1] == '-') tk.opInfo.id = Hcpl_Oper::SDec, r++;
-					else if (str[l + 1] == '=') tk.opInfo.id = Hcpl_Oper::SubAss, r++;
-					else tk.opInfo.id = Hcpl_Oper::Sub;
+					if (str[l + 1] == '-') tk.opInfo.type = OperType::SDec, r++;
+					else if (str[l + 1] == '=') tk.opInfo.type = OperType::SubAss, r++;
+					else tk.opInfo.type = OperType::Sub;
 					break;
 				case '*' :
 					tk.type = Hcpl_TokenType::Oper;
-					if (str[l + 1] == '=') tk.opInfo.id = Hcpl_Oper::MulAss, r++;
-					else tk.opInfo.id = Hcpl_Oper::Mul;
+					if (str[l + 1] == '=') tk.opInfo.type = OperType::MulAss, r++;
+					else tk.opInfo.type = OperType::Mul;
 					break;
 				case '/' :
 					tk.type = Hcpl_TokenType::Oper;
-					if (str[l + 1] == '=') tk.opInfo.id = Hcpl_Oper::DivAss, r++;
-					else tk.opInfo.id = Hcpl_Oper::Div;
+					if (str[l + 1] == '=') tk.opInfo.type = OperType::DivAss, r++;
+					else tk.opInfo.type = OperType::Div;
 					break;
 				case '%' :
 					tk.type = Hcpl_TokenType::Oper;
-					if (str[l + 1] == '=') tk.opInfo.id = Hcpl_Oper::ModAss, r++;
-					else tk.opInfo.id = Hcpl_Oper::Mod;
+					if (str[l + 1] == '=') tk.opInfo.type = OperType::ModAss, r++;
+					else tk.opInfo.type = OperType::Mod;
 					break;
 				case '!' :
 					tk.type = Hcpl_TokenType::Oper;
 					if (str[l + 1] == '=') {
-						if (str[l + 2] == '=') tk.opInfo.id = Hcpl_Oper::One, r += 2;
-						else tk.opInfo.id = Hcpl_Oper::Ne, r++;
-					} else tk.opInfo.id = Hcpl_Oper::Lnot;
+						if (str[l + 2] == '=') tk.opInfo.type = OperType::One, r += 2;
+						else tk.opInfo.type = OperType::Ne, r++;
+					} else tk.opInfo.type = OperType::Lnot;
 					break;
 				case '<' :
 					tk.type = Hcpl_TokenType::Oper;
 					if (str[l + 1] == '<') {
-						if (str[l + 2] == '=') tk.opInfo.id = Hcpl_Oper::ShlAss, r += 2;
-						else tk.opInfo.id = Hcpl_Oper::Shl, r++;
-					} else if (str[l + 1] == '=') tk.opInfo.id = Hcpl_Oper::Le, r++;
-					else if (str[l + 1] == '$') tk.type = Hcpl_TokenType::BrkSt, tk.brkInfo.type = Hcpl_BrkType::GenericL, r++;
-					else tk.opInfo.id = Hcpl_Oper::Ls;
+						if (str[l + 2] == '=') tk.opInfo.type = OperType::ShlAss, r += 2;
+						else tk.opInfo.type = OperType::Shl, r++;
+					} else if (str[l + 1] == '=') tk.opInfo.type = OperType::Le, r++;
+					else if (str[l + 1] == '$') tk.type = Hcpl_TokenType::BrkSt, tk.brkInfo.type = BrkType::GenericL, r++;
+					else tk.opInfo.type = OperType::Ls;
 					break;
 				case '$' :
 					if (str[l + 1] == '>') {
-						tk.type = Hcpl_TokenType::BrkEd, tk.brkInfo.type = Hcpl_BrkType::GenericR, r++;
+						tk.type = Hcpl_TokenType::BrkEd, tk.brkInfo.type = BrkType::GenericR, r++;
 					} else {
 						printf("line %d: invalid symbol $\n", tk.lineId);
-						return 1;
+						return Res_Error;
 					}
 					break;
 				case '>' :
 					tk.type = Hcpl_TokenType::Oper;
 					if (str[l + 1] == '>') {
-						if (str[l + 2] == '=') tk.opInfo.id = Hcpl_Oper::ShrAss, r += 2;
-						else tk.opInfo.id = Hcpl_Oper::Shr, r++;
-					} else if (str[l + 1] == '=') tk.opInfo.id = Hcpl_Oper::Ge, r++;
-					else tk.opInfo.id = Hcpl_Oper::Gt;
+						if (str[l + 2] == '=') tk.opInfo.type = OperType::ShrAss, r += 2;
+						else tk.opInfo.type = OperType::Shr, r++;
+					} else if (str[l + 1] == '=') tk.opInfo.type = OperType::Ge, r++;
+					else tk.opInfo.type = OperType::Gt;
 					break;
 				case '|' :
 					tk.type = Hcpl_TokenType::Oper;
-					if (str[l + 1] == '=') tk.opInfo.id = Hcpl_Oper::OrAss, r++;
-					else if (str[l + 1] == '|') tk.opInfo.id = Hcpl_Oper::Lor, r++;
-					else tk.opInfo.id = Hcpl_Oper::Or;
+					if (str[l + 1] == '=') tk.opInfo.type = OperType::OrAss, r++;
+					else if (str[l + 1] == '|') tk.opInfo.type = OperType::Lor, r++;
+					else tk.opInfo.type = OperType::Or;
 					break;
 				case '&' :
 					tk.type = Hcpl_TokenType::Oper;
-					if (str[l + 1] == '=') tk.opInfo.id = Hcpl_Oper::AndAss, r++;
-					else if (str[l + 1] == '&') tk.opInfo.id = Hcpl_Oper::Land, r++;
-					else tk.opInfo.id = Hcpl_Oper::And;
+					if (str[l + 1] == '=') tk.opInfo.type = OperType::AndAss, r++;
+					else if (str[l + 1] == '&') tk.opInfo.type = OperType::Land, r++;
+					else tk.opInfo.type = OperType::And;
 					break;
 				case '^' :
 					tk.type = Hcpl_TokenType::Oper;
-					if (str[l + 1] == '=') tk.opInfo.id = Hcpl_Oper::XorAss, r++;
-					else tk.opInfo.id = Hcpl_Oper::Xor;
+					if (str[l + 1] == '=') tk.opInfo.type = OperType::XorAss, r++;
+					else tk.opInfo.type = OperType::Xor;
 					break;
 				case '~' :
 					tk.type = Hcpl_TokenType::Oper;
-					tk.opInfo.id = Hcpl_Oper::Not;
+					tk.opInfo.type = OperType::Not;
 					break;
 				case ',' :
 					tk.type = Hcpl_TokenType::Oper;
-					tk.opInfo.id = Hcpl_Oper::Comma;
+					tk.opInfo.type = OperType::Comma;
 					break;
 				case '{' :
 					tk.type = Hcpl_TokenType::BrkSt;
-					tk.brkInfo.type = Hcpl_BrkType::LargeL;
+					tk.brkInfo.type = BrkType::LargeL;
 					break;
 				case '}' :
 					tk.type = Hcpl_TokenType::BrkEd;
-					tk.brkInfo.type = Hcpl_BrkType::LargeR;
+					tk.brkInfo.type = BrkType::LargeR;
 					break;
 				case '[' :
 					tk.type = Hcpl_TokenType::BrkSt;
-					tk.brkInfo.type = Hcpl_BrkType::MediumL;
+					tk.brkInfo.type = BrkType::MediumL;
 					break;
 				case ']' :
 					tk.type = Hcpl_TokenType::BrkEd;
-					tk.brkInfo.type = Hcpl_BrkType::MediumR;
+					tk.brkInfo.type = BrkType::MediumR;
 					break;
 				case '(' :
 					tk.type = Hcpl_TokenType::BrkSt;
-					tk.brkInfo.type = Hcpl_BrkType::SmallL;
+					tk.brkInfo.type = BrkType::SmallL;
 					break;
 				case ')' :
 					tk.type = Hcpl_TokenType::BrkEd;
-					tk.brkInfo.type = Hcpl_BrkType::SmallR;
+					tk.brkInfo.type = BrkType::SmallR;
 					break;
 				case ';' :
 					tk.type = Hcpl_TokenType::ExprEnd;
 					break;
 				case ':' :
 					tk.type = Hcpl_TokenType::Oper;
-					if (str[l + 1] == ':') tk.opInfo.id = Hcpl_Oper::Scope, r++;
-					else tk.opInfo.id = Hcpl_Oper::Cvt;
+					if (str[l + 1] == ':') tk.opInfo.type = OperType::Scope, r++;
+					else tk.opInfo.type = OperType::Cvt;
 					break;
 				default :
 					printf("line %d: invalid symbol %c\n", lineId, str[l]);
-					return 1;
+					return Res_Error;
 			}
 			tk.strData = str.substr(l, r - l + 1);
 			switch (tk.type) {
 				case Hcpl_TokenType::Oper :
-					tk.opInfo.weight = Hcpl_OperWeight[(int)tk.opInfo.id];
+					tk.opInfo.weight = Hcpl_OperWeight[(int)tk.opInfo.type];
 					break;
 				case Hcpl_TokenType::BrkSt :
 					brkStk.push(tokens.size());
@@ -208,7 +208,7 @@ int Hcpl_tokenize(const std::string &str, std::vector<Hcpl_Token> &tokens)
 				case Hcpl_TokenType::BrkEd :
 					if (brkStk.empty() || (int)tokens[brkStk.top()].brkInfo.type != ((int)tk.brkInfo.type & ~1)) {
 						printf("line %d: can not match bracket %c", lineId, str[l]);
-						break;
+						return Res_SeriousError;
 					} 
 					tokens[brkStk.top()].brkInfo.pir = tokens.size();
 					tk.brkInfo.pir = brkStk.top();

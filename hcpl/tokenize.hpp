@@ -26,7 +26,7 @@ enum class Hcpl_TokenType {
 	BrkSt, BrkEd, Keyword, 
 };
 
-enum class Hcpl_Oper {
+enum class OperType {
 	// weight 1
 	Comma,
 	// weight 2
@@ -62,14 +62,14 @@ enum class Hcpl_Oper {
 #define Hcpl_operNum	46
 extern const int Hcpl_OperWeight[];
 
-enum class Hcpl_Keyword {
+enum class KeywordType {
 	If, Else, While, For, Switch, Case, Break, Continue, Return, Using, Namespace, Class, FuncDef, VarDef, EnumDef, Public, Protected, Private, Override, Fixed
 };
 
 #define Hcpl_keywordNum	20
 extern const char *Hcpl_keywordStr[];
 
-enum class Hcpl_BrkType {
+enum class BrkType {
 	LargeL, LargeR, MediumL, MediumR, SmallL, SmallR, GenericL, GenericR 
 };
 
@@ -83,22 +83,22 @@ struct Hcpl_Token {
 			// Fortunately, most operators with same character(s) accepts different number of operands.
 			// So during tokenization, the operator that accept more operands will be written to this field.
 			// the special cases is ++ and --, which will be treated as suffix operators.
-			Hcpl_Oper id;
+			OperType type;
 			// the weight of the operator represented by ID
 			int weight;
 		} opInfo;
-		Hcpl_Keyword kwId;
+		KeywordType kwType;
 		struct {
 			size_t pir;
-			Hcpl_BrkType type;
+			BrkType type;
 		} brkInfo;
 	};
 	std::string strData;
 };
 
-static inline bool isSpecOper(const Hcpl_Token &token, Hcpl_Oper opId) { return token.type == Hcpl_TokenType::Oper && token.opInfo.id == opId; }
-static inline bool isSpecKw(const Hcpl_Token &token, Hcpl_Keyword kwId) { return token.type == Hcpl_TokenType::Keyword && token.kwId == kwId; }
-static inline bool isSpecBrk(const Hcpl_Token &token, Hcpl_BrkType brkType) {
+static inline bool isSpecOper(const Hcpl_Token &token, OperType opType) { return token.type == Hcpl_TokenType::Oper && token.opInfo.type == opType; }
+static inline bool isSpecKw(const Hcpl_Token &token, KeywordType kwId) { return token.type == Hcpl_TokenType::Keyword && token.kwType == kwId; }
+static inline bool isSpecBrk(const Hcpl_Token &token, BrkType brkType) {
 	return token.type == ((int)brkType & 1 ? Hcpl_TokenType::BrkEd : Hcpl_TokenType::BrkSt) && token.brkInfo.type == brkType; 
 }
 

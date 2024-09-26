@@ -10,7 +10,7 @@ int main(int argc, char **argv) {
 		std::vector<Hcpl_Token> tokens;
 		Hcpl_tokenize(str, tokens);
 		CplNode *root;
-		Hcpl_makeCplTree(tokens, Hcpl_CplNodeType::SrcRoot, root);
+		Hcpl_makeCplTree(tokens, CplNodeType::SrcRoot, root);
 		return 0;
 	}
 	return 0;

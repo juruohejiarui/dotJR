@@ -36,4 +36,7 @@ static inline int isNumber(char ch) { return '0' <= ch && ch <= '9'; }
 static inline int isLetter(char ch) { return ('a' <= ch && ch <= 'z') || ('A' <= ch && ch <= 'Z') || ch == '_' || ch == '@'; }
 static inline int isSeparator(char ch) { return ch == '\t' || ch == ' ' || ch == '\n'; }
 
+#define Res_Error			(1ul << 0)
+#define Res_SeriousError	(1ul << 1)
+
 #endif

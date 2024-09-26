@@ -2,7 +2,7 @@
 
 #include "tokenize.hpp"
 
-enum class Hcpl_CplNodeType {
+enum class CplNodeType {
 	Expr, Gener, Type, Const, Iden, Oper,
 	NspDef, ClsDef, EnumDef, FuncDef, VarDef,
 	Using,
@@ -10,14 +10,14 @@ enum class Hcpl_CplNodeType {
 	SrcRoot, SymRoot
 };
 
-enum class Hcpl_AccessType {
+enum class IdenAccessType {
 	Public, Protected, Private
 };
 
 // Because I dont want to use inherentation
 // there is no contruction and destruction function and every STL members should be initialized manually
 struct CplNode {
-	Hcpl_CplNodeType type;
+	CplNodeType type;
 	// if this node is a definition node, then the token is the identifier token
 	Hcpl_Token token;
 	int locVarNum = 0;
@@ -38,21 +38,23 @@ struct OperNode : CplNode {
 };
 
 struct TypeNode : CplNode {
-	int dimc;
-	int attr;
-	#define Hcpl_TypeNode_Attr_isPtr 	(1 << 0)
-	// if this bit is set, then isPtr bit should also be set.
-	#define Hcpl_TypeNode_Attr_isFunc	(1 << 1) 
+	int dimc = 0;
+	int attr = 0;
+	#define TypeNode_Attr_isPtr 	(1 << 0)
+	#define TypeNode_Attr_isFunc	(1 << 1)
+	#define TypeNode_Attr_isArr		(1 << 2)
 
 	// if this type is pointer, then subType is the source of the pointer
 	// if this type is array, then subType is the type of the elements
-	CplNode *subType;
+	TypeNode *subType = nullptr;
 	// if this type is pointer, then gener should be nullptr
-	CplNode *gener;
+	CplNode *gener = nullptr;
+	// this array should be empty if isFunc == 0
+	std::vector<TypeNode *> params;
 };
 
 struct EnumNode : CplNode {
-	Hcpl_AccessType access;
+	IdenAccessType access;
 	// if this enum class is an inner class, then this field points to the class, namespace or function that it belongs to
 	CplNode *belong = nullptr;
 	std::vector<CplNode *> Iden;
@@ -64,7 +66,7 @@ struct EnumNode : CplNode {
 #define Hcpl_DefNode_Attr_Local		(1ul << 2)
 
 struct VarNode : CplNode {
-	Hcpl_AccessType access;
+	IdenAccessType access;
 	TypeNode *varType = nullptr;
 	CplNode *initExpr = nullptr;
 };
@@ -74,7 +76,7 @@ struct UsingNode : CplNode {
 };
 
 struct FuncNode : CplNode {
-	Hcpl_AccessType access;
+	IdenAccessType access;
 	u64 attr;
 	TypeNode *retType = nullptr;
 	CplNode *belong = nullptr, *content = nullptr;
@@ -84,7 +86,7 @@ struct FuncNode : CplNode {
 };
 
 struct ClsNode : CplNode {
-	Hcpl_AccessType access;
+	IdenAccessType access;
 	std::string fullName;
 	// this field is the type of the parent class
 	CplNode *parType;
@@ -99,7 +101,7 @@ struct ClsNode : CplNode {
 };
 
 struct NspNode : CplNode {
-	Hcpl_AccessType access;
+	IdenAccessType access;
 	std::string fullName;
 	// this field points to the namespace that it belongs to
 	CplNode *belong;
@@ -132,4 +134,4 @@ struct SwitchNode : CplNode {
 
 
 
-int Hcpl_makeCplTree(const std::vector<Hcpl_Token> &tokens, Hcpl_CplNodeType rootType, CplNode *&root);
+int Hcpl_makeCplTree(const std::vector<Hcpl_Token> &tokens, CplNodeType rootType, CplNode *&root);
