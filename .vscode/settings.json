@@ -57,6 +57,8 @@
 		"stdexcept": "cpp",
 		"streambuf": "cpp",
 		"text_encoding": "cpp",
-		"typeinfo": "cpp"
+		"typeinfo": "cpp",
+		"hash_map": "cpp",
+		"list": "cpp"
 	}
 }

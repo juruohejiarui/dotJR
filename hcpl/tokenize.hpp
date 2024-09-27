@@ -101,5 +101,6 @@ static inline bool isSpecKw(const Hcpl_Token &token, KeywordType kwId) { return 
 static inline bool isSpecBrk(const Hcpl_Token &token, BrkType brkType) {
 	return token.type == ((int)brkType & 1 ? Hcpl_TokenType::BrkEd : Hcpl_TokenType::BrkSt) && token.brkInfo.type == brkType; 
 }
+static inline void skipBrk(const Hcpl_Token &token, size_t &pos) { token.type != Hcpl_TokenType::BrkSt || (pos = token.brkInfo.pir); }
 
 int Hcpl_tokenize(const std::string &str, std::vector<Hcpl_Token> &tokens);

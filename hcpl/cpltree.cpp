@@ -1,9 +1,11 @@
 #include "cpltree.hpp"
 #include <cstring>
+#include <tuple>
 #include <stack>
 
 static int parse(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root, CplNode *father);
 static int parseKeyword(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root, CplNode *father);
+static int parseExpr(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t to, ExprNode *&root, CplNode *father);
 
 static int parseUsing(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
 	UsingNode *node = new UsingNode(); root = node, node->type = CplNodeType::Using;
@@ -36,8 +38,12 @@ static int parseUsing(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &
 static int parseType(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t to, TypeNode *&root) {
 	TypeNode *node = new TypeNode(); root = node, node->type == CplNodeType::Type;
 	int errorPos = 0, res = 0;
+
+	if (fr > to) { errorPos = fr; goto SyntaxError; }
+
+	// ignore the () that wrap the whole type expression
 	for (; fr <= to && isSpecBrk(tokens[fr], BrkType::SmallL) && tokens[fr].brkInfo.pir == to; fr++, to--) ;
-	if (fr <= to) { errorPos = fr; goto SyntaxError; }
+	if (fr > to) { errorPos = fr; goto SyntaxError; }
 	// check if it is an array
 	if (isSpecBrk(tokens[to], BrkType::MediumR) && tokens[to].brkInfo.pir == to - 1) {
 		while (isSpecBrk(tokens[to], BrkType::MediumR) && tokens[to].brkInfo.pir == to - 1 && fr < to) {
@@ -46,24 +52,99 @@ static int parseType(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t to
 			to = tokens[to].brkInfo.pir - 1;
 		}
 		node->token = tokens[to + 1];
-		if (fr <= to) { errorPos = fr; goto SyntaxError; }
 		res |= parseType(tokens, fr, to, node->subType);
 	// check if it is a pointer
 	} else if (isSpecOper(tokens[to], OperType::Mul)) {
+		// use the token of * to represents that this type is a pointer
 		node->token = tokens[to];
 		node->attr |= TypeNode_Attr_isPtr;
-		if (fr <= to) { errorPos = fr; goto SyntaxError; }
 		res |= parseType(tokens, fr, to - 1, node->subType);
 	// check if it is a function pointer
-	} else if (isSpecBrk(tokens[to], BrkType::SmallR)) {
-		for (int l = tokens[to].brkInfo	.pir + 1, r = l; l < to; l = ++r) {
-			
+	} else if (isSpecBrk(tokens[to], BrkType::SmallR) || isSpecBrk(tokens[to], BrkType::GenericR)) {
+		node->attr |= isSpecBrk(tokens[to], BrkType::SmallR) ? TypeNode_Attr_isFunc : TypeNode_Attr_hasGener;
+		for (size_t l = tokens[to].brkInfo.pir + 1, r = l; l < to; l = ++r) {
+			// get the token interval of the param type expression
+			for (; !isSpecOper(tokens[r], OperType::Comma) && r < to; r++) skipBrk(tokens[r], r);
+			TypeNode *param;
+			res |= parseType(tokens, l, r - 1, param);
+			node->params.push_back(param);
 		}
-	}
-	// 
+		to = tokens[to].brkInfo.pir;
+		if (res & Res_SeriousError) return res;
+		// get the return type of the function pointer
+		if (node->attr & TypeNode_Attr_isFunc)
+			// use the token of ( to represents that this type is a function pointer
+			node->token = tokens[to],
+			res |= parseType(tokens, fr, to - 1, node->subType);
+		else {
+			if (fr < to - 1) { errorPos = to - 1; goto SyntaxError; }
+			node->token = tokens[fr];
+		}
+	} else { // it is just a normal type expression
+		if (fr != to) { errorPos = to - 1; goto SyntaxError; }
+		node->token = tokens[to];
+	}	
 	return res;
 	SyntaxError:
 	printf("line %d: Syntax Error on \"%s\"\n", tokens[errorPos].lineId, tokens[errorPos].strData.c_str());
+	return Res_SeriousError;
+}
+
+static int parseExpr(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t to, ExprNode *&root, CplNode *father) {
+	int errorPos = 0, res = 0;
+	std::stack< std::pair<OperNode *, u32> > opers;
+	std::stack<CplNode *> idens;
+	ExprNode *node = new ExprNode(), *curRoot = node;
+	node->constData.type = BsData_Type_void, node->type = CplNodeType::Expr, root = node;
+
+	// cvt the operator type to prefix version, @return: <the prefix version, whether the convertion is successful>
+	auto cvt2PrefOperType = [](OperType opType) -> std::tuple<OperType, bool> {
+		switch (opType) {
+
+		}
+		return std::make_tuple(OperType::Comma, false);
+	};
+	// check if the operator if a valid prefix operator, whose weight is greater that the previous one or it is the first operator
+	// @return: the prefix version of operator and whether it is a valid prefix operator
+	auto getPrefixOper = [&](size_t pos, OperType prev) -> std::tuple<OperType, bool> {
+		if (tokens[pos].type != Hcpl_TokenType::Oper) return std::make_tuple(OperType::Comma, false);
+		auto res = cvt2PrefOperType(tokens[pos].opInfo.type);
+		// condition 0: can be converted to a prefix operator, 
+		// condition 1: the first operator or the weight of previous one is smaller
+		return std::make_tuple(std::get<0>(res), std::get<1>(res) && (pos == fr || Hcpl_OperWeight[(int)prev] <= Hcpl_OperWeight[(int)std::get<0>(res)]));
+	};
+
+	// ignore the brackets that wrap the whole expression
+	while (isSpecBrk(tokens[fr], BrkType::SmallL) && tokens[fr].brkInfo.pir == to) fr++, to--;
+	if (fr > to) { errorPos = fr; goto SyntaxError; }
+
+	// parse the prefix operator : * release pointer, & get pointer, ++ prefix increase, -- prefix decrease, ~ not, ! logic not, new new object or new array
+	
+	while (tokens[fr].type == Hcpl_TokenType::Oper) {
+		
+	}
+
+	for (size_t l = fr, r = l; l <= to; l = ++r) {
+		switch (tokens[l].type) {
+			case Hcpl_TokenType::Oper: {
+				OperNode *node = new OperNode();
+				node->type = CplNodeType::Oper; node->token = tokens[l];
+				break;
+			}
+			case Hcpl_TokenType::BrkSt: {
+				switch (tokens[l].brkInfo.type) {
+					// there is a sub-expression
+					case BrkType::SmallL: {
+						ExprNode *subExpr;
+						res |= parseExpr(tokens, l, tokens[l].brkInfo.pir, subExpr, node);
+					}
+				}
+			}
+		}
+	}
+	return 0;
+	SyntaxError:
+	printf("line %d: syntax error on \"%s\"\n", tokens[errorPos].lineId, tokens[errorPos].strData.c_str());
 	return Res_SeriousError;
 }
 
@@ -91,29 +172,47 @@ static __always_inline int parseFunc(const std::vector<Hcpl_Token> &tokens, size
 		to = tokens[fr + 2].brkInfo.pir + 1;
 	} else to = fr + 2;
 	if (isSpecBrk(tokens[to], BrkType::SmallL)) {
-		for (int l = to + 1, r = l; l < tokens[to].brkInfo.pir; l = ++r) {
+		for (size_t l = to + 1, r = l; l < tokens[to].brkInfo.pir; l = ++r) {
 			if (tokens[l].type != Hcpl_TokenType::Iden || !isSpecOper(tokens[l + 1], OperType::Cvt)) { errorPos = l + 1; goto SyntaxError; }
 			VarNode *param = new VarNode(); param->type = CplNodeType::VarDef;
 			param->token = tokens[l];
 			r = l + 2;
-			for (r = l + 2; !isSpecOper(tokens[r], OperType::Comma) && !isSpecBrk(tokens[r], BrkType::SmallR); r++)
-				if (tokens[r].type == Hcpl_TokenType::BrkSt) r = tokens[r].brkInfo.pir;
+			bool needDefaultValue = false;
+			// get the range of the type expresstion
+			for (r = l + 2; !isSpecOper(tokens[r], OperType::Comma) && !isSpecOper(tokens[r], OperType::Ass) && !isSpecBrk(tokens[r], BrkType::SmallR); r++)
+				skipBrk(tokens[r], r);
 			res |= parseType(tokens, l + 2, r - 1, param->varType);
+			// there is a default value of this parameter
+			if (isSpecOper(tokens[r], OperType::Ass)) {
+				for (l = r++; !isSpecOper(tokens[r], OperType::Comma) && !isSpecBrk(tokens[r], BrkType::SmallR); r++)
+					skipBrk(tokens[r], r);
+				res |= parseExpr(tokens, l, r - 1, param->initExpr, param);
+				if (param->initExpr != nullptr && param->initExpr->constData.type != BsData_Type_void) {
+					res |= 1;
+					printf("line %d: expression of default value of function parameter should be constant\n", tokens[l].lineId);
+				}
+				needDefaultValue = true;
+			} else if (needDefaultValue) { errorPos = l; goto DefaultValueError; }
 			node->paramList.push_back(param);
 		}
 		to = tokens[to].brkInfo.pir + 1;
 
 	} else { errorPos = to; goto SyntaxError; }
+	// parse the return type node
 	if (isSpecOper(tokens[to], OperType::Cvt)) {
 		for (fr = ++to; !isSpecOper(tokens[to], OperType::Comma) && !isSpecBrk(tokens[to], BrkType::LargeL); to++)
-			if (tokens[to].type == Hcpl_TokenType::BrkSt) to = tokens[to].brkInfo.pir;
+			skipBrk(tokens[to], to);
 		res |= parseType(tokens, fr, to - 1, node->retType);
 	} else { errorPos = to; goto SyntaxError; }
 	if (!isSpecBrk(tokens[to], BrkType::LargeL)) { errorPos = to; goto SyntaxError; }
+	// parse the content, which must be a block
 	res |= parse(tokens, to, to, node->content, node);
 	return res;
 	SyntaxError:
 	printf("line %d: syntax error on \"%s\"\n", tokens[errorPos].lineId, tokens[errorPos].strData.c_str());
+	return Res_SeriousError;
+	DefaultValueError:
+	printf("line %d: parameter \"%s\" requires a default value\n", tokens[errorPos].lineId, tokens[errorPos].strData.c_str());
 	return Res_SeriousError;
 }
 
@@ -160,16 +259,19 @@ static __always_inline int parseNsp(const std::vector<Hcpl_Token> &tokens, size_
 }
 
 static int parseKeyword(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root, CplNode *father) {
-	int errorPos = to;
+	int errorPos = to, res = 0;
 	switch (tokens[fr].kwType) {
 		case KeywordType::Using:
 			return parseUsing(tokens, fr, to, root);
 		case KeywordType::Namespace :
 			if (father->type != CplNodeType::SrcRoot && father->type != CplNodeType::SymRoot)
 				goto SyntaxError;
-			return parseNsp(tokens, fr, to, root);
+			res |= parseNsp(tokens, fr, to, root);
+			break;
 		case KeywordType::FuncDef :
-			return parseFunc(tokens, fr, to, root);
+			res |= parseFunc(tokens, fr, to, root);
+			((FuncNode *)root)->belong = father;
+			break;
 		case KeywordType::Private:
 		case KeywordType::Protected:
 		case KeywordType::Public:
@@ -178,17 +280,10 @@ static int parseKeyword(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t
 			break;
 		default : goto SyntaxError;
 	}
-	return 0;
+	return res;
 	SyntaxError:
 	printf("line %d: invalid position of keyword \"%s\"\n", tokens[errorPos].lineId, tokens[errorPos].strData.c_str());
 	return Res_SeriousError;
-}
-
-static int parseExpr(const std::vector<Hcpl_Token> &token, size_t fr, size_t to, CplNode *&root, CplNode *father) {
-	std::stack< std::pair<OperNode *, u32> > opers;
-	std::stack<CplNode *> idens;
-
-	return 0;
 }
 
 static int parseBlk(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t to, CplNode *&root, CplNode *father) {
@@ -211,10 +306,14 @@ static int parse(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, C
 		case Hcpl_TokenType::Iden:
 		case Hcpl_TokenType::Const:
 		case Hcpl_TokenType::Oper:
-		case Hcpl_TokenType::String:
+		case Hcpl_TokenType::String: {
+			ExprNode *node;
 			for (to = fr; !isSpecOper(tokens[to], OperType::Comma) && !isSpecBrk(tokens[to], BrkType::LargeL); to++)
 				if (tokens[to].type == Hcpl_TokenType::BrkSt) to = tokens[to].brkInfo.pir;
-			return parseExpr(tokens, fr, to - 1, root, father);
+			int res = parseExpr(tokens, fr, to - 1, node, father);
+			root = node;
+			return res;
+		}
 	}
 	return 0;
 }

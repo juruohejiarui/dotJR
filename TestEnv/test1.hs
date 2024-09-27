@@ -4,10 +4,10 @@ namespace Algorithm {
 	public func sort<$T$>(array : T[], len : int, cmp : int(T, T)) : void {
 		sort(&array[0], &array[len - 1]);
 	}
-	public func sort<$T$>(st : &T, ed : &T, cmp : int(T, T)) : void {
+	public func sort<$T$>(st : T*, ed : T*, cmp : int(T, T)) : void {
 
 	}
-	public func reverse<$T$>(st : T*, ed : T*) : void : void {
+	public func reverse<$T$>(st : T*, ed : T*) : void {
 	}
 	public func swap<$T$>(x : T*, y : T*) : void {
 		var z = *x;

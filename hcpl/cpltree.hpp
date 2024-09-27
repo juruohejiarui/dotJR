@@ -43,13 +43,14 @@ struct TypeNode : CplNode {
 	#define TypeNode_Attr_isPtr 	(1 << 0)
 	#define TypeNode_Attr_isFunc	(1 << 1)
 	#define TypeNode_Attr_isArr		(1 << 2)
+	#define TypeNode_Attr_hasGener	(1 << 3)
 
 	// if this type is pointer, then subType is the source of the pointer
 	// if this type is array, then subType is the type of the elements
 	TypeNode *subType = nullptr;
-	// if this type is pointer, then gener should be nullptr
-	CplNode *gener = nullptr;
 	// this array should be empty if isFunc == 0
+	// if hasGener == 1, then this list represents the generic parameters
+	// if isFunc == 1, then this list represents the parameters type
 	std::vector<TypeNode *> params;
 };
 
@@ -68,7 +69,7 @@ struct EnumNode : CplNode {
 struct VarNode : CplNode {
 	IdenAccessType access;
 	TypeNode *varType = nullptr;
-	CplNode *initExpr = nullptr;
+	ExprNode *initExpr = nullptr;
 };
 
 struct UsingNode : CplNode {
