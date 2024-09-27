@@ -2,7 +2,7 @@
 #include <cstring>
 #include <stack>
 
-const int Hcpl_OperWeight[] = {
+const int Hcpl_operWeight[] = {
 	1,
 	2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
 	3,
@@ -200,7 +200,7 @@ int Hcpl_tokenize(const std::string &str, std::vector<Hcpl_Token> &tokens)
 			tk.strData = str.substr(l, r - l + 1);
 			switch (tk.type) {
 				case Hcpl_TokenType::Oper :
-					tk.opInfo.weight = Hcpl_OperWeight[(int)tk.opInfo.type];
+					tk.opInfo.weight = Hcpl_operWeight[(int)tk.opInfo.type];
 					break;
 				case Hcpl_TokenType::BrkSt :
 					brkStk.push(tokens.size());

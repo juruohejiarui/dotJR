@@ -60,7 +60,7 @@ enum class OperType {
 };
 
 #define Hcpl_operNum	46
-extern const int Hcpl_OperWeight[];
+extern const int Hcpl_operWeight[];
 
 enum class KeywordType {
 	If, Else, While, For, Switch, Case, Break, Continue, Return, Using, Namespace, Class, FuncDef, VarDef, EnumDef, Public, Protected, Private, Override, Fixed

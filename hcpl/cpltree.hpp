@@ -24,17 +24,12 @@ struct CplNode {
 };
 
 struct ExprNode : CplNode {
-	CplNode *expRoot = nullptr;
+	ExprNode *lOperand = nullptr, *rOperand = nullptr;
 	BsData constData;
 };
 
 struct GenericNode : CplNode {
 	std::vector<CplNode *> types;
-};
-
-struct OperNode : CplNode {
-	CplNode *lOperand = nullptr, *rOperand = nullptr;
-	BsData constData;
 };
 
 struct TypeNode : CplNode {
