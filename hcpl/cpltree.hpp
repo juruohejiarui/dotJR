@@ -24,15 +24,21 @@ struct CplNode {
 };
 
 struct ExprNode : CplNode {
-	ExprNode *lOperand = nullptr, *rOperand = nullptr;
 	BsData constData;
 };
-
-struct GenericNode : CplNode {
-	std::vector<CplNode *> types;
+struct ExprRootNode : ExprNode {
+	ExprNode *expr;
 };
+struct OperNode : ExprNode {
+	ExprNode *lOperand = nullptr, *rOperand = nullptr;
+};
+static __always_inline void CplNode_initOperNode(OperNode *opNode, const Hcpl_Token &token) {
+	opNode->type = CplNodeType::Oper;
+	opNode->constData.type = BsData_Type_void;
+	opNode->token = token;
+}
 
-struct TypeNode : CplNode {
+struct TypeNode : ExprNode {
 	int dimc = 0;
 	int attr = 0;
 	#define TypeNode_Attr_isPtr 	(1 << 0)
@@ -47,6 +53,13 @@ struct TypeNode : CplNode {
 	// if hasGener == 1, then this list represents the generic parameters
 	// if isFunc == 1, then this list represents the parameters type
 	std::vector<TypeNode *> params;
+};
+
+
+struct IdenNode : ExprNode {
+	int isFunc = 0;
+	std::vector<TypeNode *> gener;
+	std::vector<ExprNode *> param;
 };
 
 struct EnumNode : CplNode {

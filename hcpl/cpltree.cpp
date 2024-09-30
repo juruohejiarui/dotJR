@@ -9,15 +9,10 @@ static int parseExpr(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t to
 
 static int parseUsing(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
 	UsingNode *node = new UsingNode(); root = node, node->type = CplNodeType::Using;
-	node->token = tokens[fr];
-	for (to = fr + 1; tokens[to].type != Hcpl_TokenType::ExprEnd; to++) {
-		if (tokens[to].type == Hcpl_TokenType::Iden) {
-			if (to - 1 != fr && !isSpecOper(tokens[to - 1], OperType::Scope))
-				goto SyntaxError;
-			node->path.push_back(tokens[to].strData);
-		} else if (!isSpecOper(tokens[to], OperType::Scope) || tokens[to - 1].type != Hcpl_TokenType::Iden)
-			goto SyntaxError;
-	}
+	node->token = tokens[fr + 1];
+	if (tokens[fr + 1].type != Hcpl_TokenType::Iden) { to = fr + 1; goto SyntaxError; }
+	if (tokens[fr + 2].type != Hcpl_TokenType::ExprEnd) { to = fr + 2; goto SyntaxError; }
+	to = fr + 2;
 	return 0;
 	SyntaxError:
 	printf("line %d: invalid content of \"using\"", tokens[to].lineId);
@@ -91,73 +86,22 @@ static int parseType(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t to
 }
 
 static int parseExpr(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t to, ExprNode *&root, CplNode *father) {
-	int errorPos = 0, res = 0;
-	std::stack< std::pair<ExprNode *, u32> > opers;
-	std::stack<CplNode *> idens;
-	ExprNode *node = new ExprNode();
-	ExprNode **curNode = &root;
-	size_t l, r;
-	node->constData.type = BsData_Type_void, node->type = CplNodeType::Expr, root = node;
-
-	// cvt the operator type to prefix version, @return: <the prefix version, whether the convertion is successful>
-	auto cvt2PrefOperType = [](OperType opType) -> std::tuple<OperType, bool> {
-		switch (opType) {
-			case OperType::Mul: return std::make_tuple(OperType::GetVal, true);
-			case OperType::And: return std::make_tuple(OperType::GetAddr, true);
-			case OperType::SDec: return std::make_tuple(OperType::PDec, true);
-			case OperType::SInc: return std::make_tuple(OperType::SInc, true);
-			case OperType::Sub: return std::make_tuple(OperType::Minus, true);
-			case OperType::Not:
-			case OperType::Lnot:
-			case OperType::New: 
-			case OperType::PDec:
-			case OperType::PInc: return std::make_tuple(opType, true);
-		}
-		return std::make_tuple(OperType::Comma, false);
-	};
-	// check if the operator if a valid prefix operator, whose weight is greater that the previous one or it is the first operator
-	// @return: the prefix version of operator and whether it is a valid prefix operator
-	auto getPrefixOper = [&](size_t pos, OperType prev) -> std::tuple<OperType, bool> {
-		if (tokens[pos].type != Hcpl_TokenType::Oper) return std::make_tuple(OperType::Comma, false);
-		auto res = cvt2PrefOperType(tokens[pos].opInfo.type);
-		// condition 0: can be converted to a prefix operator, 
-		// condition 1: the first operator or the weight of previous one is smaller
-		return std::make_tuple(std::get<0>(res), std::get<1>(res) && (pos == fr || Hcpl_operWeight[(int)prev] <= Hcpl_operWeight[(int)std::get<0>(res)]));
-	};
-
-	// ignore the brackets that wrap the whole expression
-	while (isSpecBrk(tokens[fr], BrkType::SmallL) && tokens[fr].brkInfo.pir == to) fr++, to--;
-	if (fr > to) { errorPos = fr; goto SyntaxError; }
-	
-
-	// parse the prefix operator : * release pointer, & get pointer, ++ prefix increase, -- prefix decrease, ~ not, ! logic not, new new object or new array
-	l = fr;
-	for (std::tuple<OperType, bool> res; std::get<1>(res = getPrefixOper(l, OperType::Comma)); l++) {
-		ExprNode *opNode = new ExprNode();
-		opNode->type = CplNodeType::Oper, opNode->constData.type = BsData_Type_void;
-		opNode->token = tokens[l];
-		opNode->token.opInfo.type = std::get<0>(res);
-		opNode->token.opInfo.weight = Hcpl_operWeight[(int)opNode->token.opInfo.type];
-		(*curNode)->rOperand = opNode;
-		curNode = &(*curNode)->rOperand;
-	}
-	// then parse the suffix operator : ++, --
-	fr = l, r = to;
-
+	int errorPos = 0, res = 0, shift = 0;
+	bool needType = false, needClass = false;
+	std::vector<ExprNode *> ele;
+	// make the element list
 	for (size_t l = fr, r = l; l <= to; l = ++r) {
 		switch (tokens[l].type) {
 			case Hcpl_TokenType::Oper: {
-				ExprNode *node = new ExprNode();
-				node->type = CplNodeType::Oper; node->token = tokens[l];
+				OperNode *opNode = new OperNode(); CplNode_initOperNode(opNode, tokens[l]);
+				ele.push_back(opNode);
+				if (tokens[l].opInfo.type == OperType::Cvt) needType = true;
+				else if (tokens[l].opInfo.type == OperType::New) { needType = needClass = true; }
 				break;
 			}
-			case Hcpl_TokenType::BrkSt: {
-				switch (tokens[l].brkInfo.type) {
-					// there is a sub-expression
-					case BrkType::SmallL: {
-						ExprNode *subExpr;
-						res |= parseExpr(tokens, l, tokens[l].brkInfo.pir, subExpr, node);
-					}
+			case Hcpl_TokenType::Iden: {
+				if (needType) {
+					
 				}
 			}
 		}
@@ -241,14 +185,9 @@ static __always_inline int parseNsp(const std::vector<Hcpl_Token> &tokens, size_
 	if (fr) setAccess(tokens[fr - 1], node);
 	int res = 0;
 	node->token = tokens[fr + 1];
-	for (to = fr + 1; tokens[to].type == Hcpl_TokenType::Iden || isSpecOper(tokens[to], OperType::Scope); to++) {
-		if (tokens[to].type == Hcpl_TokenType::Iden) {
-			if (to - 1 != fr && !isSpecOper(tokens[to - 1], OperType::Scope))
-				goto SyntaxError;
-			node->path.push_back(tokens[to].strData);
-		} else if (!isSpecOper(tokens[to], OperType::Scope)) goto SyntaxError;
-	}
-	if (!isSpecBrk(tokens[to], BrkType::LargeL)) goto SyntaxError;
+	to = fr + 1;
+	if (tokens[to].type != Hcpl_TokenType::Iden) goto SyntaxError;
+	if (!isSpecBrk(tokens[++to], BrkType::LargeL)) goto SyntaxError;
 	for (size_t l = to + 1, r = l; r < tokens[to].brkInfo.pir; l = ++r) {
 		CplNode *child = nullptr;
 		switch (tokens[l].type) {

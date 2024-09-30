@@ -55,11 +55,10 @@ enum class OperType {
 	New, GetAddr, GetVal, Lnot, Not, Minus, Cvt, PInc, PDec,
 	// weight 14
 	Idx, SInc, SDec, Mem,
-	// weight 15
-	Scope
 };
 
 #define Hcpl_operNum	46
+#define Hcpl_operWeightShift 100
 extern const int Hcpl_operWeight[];
 
 enum class KeywordType {

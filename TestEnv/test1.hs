@@ -1,6 +1,7 @@
-using Algorithm;
+using Base#Algorithm;
+using Base;
 
-namespace Algorithm {
+namespace Base#Algorithm {
 	public func sort<$T$>(array : T[], len : int, cmp : int(T, T)) : void {
 		sort(&array[0], &array[len - 1]);
 	}
@@ -24,6 +25,8 @@ namespace Algorithm {
 		for (var i = 0ul; i < len; i++, ++src, ++desc)
 			*desc = *src;
 	}
+}
+namespace Base {
 	public class Array<$T$> {
 		private var : T[] data;
 		private var : ulong size, capacity;

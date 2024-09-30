@@ -17,7 +17,6 @@ const int Hcpl_operWeight[] = {
 	12, 12, 12,
 	13, 13, 13, 13, 13, 13, 13, 13, 13,
 	14, 14, 14, 14,
-	15
 };
 
 const char *Hcpl_keywordStr[] = {
@@ -45,20 +44,15 @@ int Hcpl_tokenize(const std::string &str, std::vector<Hcpl_Token> &tokens)
 		Hcpl_Token tk;
 		memset(&tk.data, 0, sizeof(BsData));
 		tk.lineId = lineId;
-		if (isLetter(str[l])) {
-			while (r + 1 < str.size() && (isLetter(str[r + 1]) || isNumber(str[r + 1]))) r++;
+		if (isLetter(str[l]) || str[l] == '#') {
+			while (r + 1 < str.size() && (isLetter(str[r + 1]) || isNumber(str[r + 1]) || str[r + 1] == '#')) r++;
 			auto subStr = str.substr(l, r - l + 1);
 			tk.strData = subStr;
-			if (subStr == "new") {
-				tk.type	= Hcpl_TokenType::Oper;
-				tk.opInfo.type = OperType::New;
-			} else {
-				int kwId = getKwId(subStr);
-				if (kwId != -1) {
-					tk.kwType = (KeywordType)kwId;
-					tk.type = Hcpl_TokenType::Keyword;
-				} else tk.type = Hcpl_TokenType::Iden;
-			}
+			int kwId = getKwId(subStr);
+			if (kwId != -1) {
+				tk.kwType = (KeywordType)kwId;
+				tk.type = Hcpl_TokenType::Keyword;
+			} else tk.type = Hcpl_TokenType::Iden;
 		} else if (isNumber(str[l])) {
 			while (r + 1 < str.size() && (isLetter(str[r + 1] || isNumber(str[r + 1]) || str[r + 1] == '.'))) r++;
 			u64 data = 0; u8 type = 0;
@@ -97,6 +91,11 @@ int Hcpl_tokenize(const std::string &str, std::vector<Hcpl_Token> &tokens)
 				case '/' :
 					tk.type = Hcpl_TokenType::Oper;
 					if (str[l + 1] == '=') tk.opInfo.type = OperType::DivAss, r++;
+					// a line comment
+					else if (str[l + 1] == '/') {
+						for (r = l + 1; r + 1 < str.size() && str[r + 1] != '\n'; r++) ;
+						continue;
+					}
 					else tk.opInfo.type = OperType::Div;
 					break;
 				case '%' :
@@ -124,8 +123,8 @@ int Hcpl_tokenize(const std::string &str, std::vector<Hcpl_Token> &tokens)
 					if (str[l + 1] == '>') {
 						tk.type = Hcpl_TokenType::BrkEd, tk.brkInfo.type = BrkType::GenericR, r++;
 					} else {
-						printf("line %d: invalid symbol $\n", tk.lineId);
-						return Res_Error;
+						tk.type = Hcpl_TokenType::Oper;
+						tk.opInfo.type = OperType::New;
 					}
 					break;
 				case '>' :
@@ -190,8 +189,7 @@ int Hcpl_tokenize(const std::string &str, std::vector<Hcpl_Token> &tokens)
 					break;
 				case ':' :
 					tk.type = Hcpl_TokenType::Oper;
-					if (str[l + 1] == ':') tk.opInfo.type = OperType::Scope, r++;
-					else tk.opInfo.type = OperType::Cvt;
+					tk.opInfo.type = OperType::Cvt;
 					break;
 				default :
 					printf("line %d: invalid symbol %c\n", lineId, str[l]);
