@@ -17,6 +17,7 @@ const int Hcpl_operWeight[] = {
 	12, 12, 12,
 	13, 13, 13, 13, 13, 13, 13, 13, 13,
 	14, 14, 14, 14,
+	15,
 };
 
 const char *Hcpl_keywordStr[] = {
@@ -33,8 +34,25 @@ BsData calcConst(const BsData &x, const BsData &y) {
 	return BsData();
 }
 
-int Hcpl_tokenize(const std::string &str, std::vector<Hcpl_Token> &tokens)
-{
+std::string BsData::toString() {
+	static char buf[64];
+	switch (type) {
+		case BsData_Type_u8: sprintf(buf, "u8:%#04x", u8Data); break; 
+		case BsData_Type_i8: sprintf(buf, "i8:%d,\'%c\'", i8Data, i8Data); break;
+		case BsData_Type_u16: sprintf(buf, "u16:%#06x", u16Data); break;
+		case BsData_Type_i16: sprintf(buf, "i16:%d", i16Data); break;
+		case BsData_Type_u32: sprintf(buf, "u32:%#010x", u32Data); break;
+		case BsData_Type_i32: sprintf(buf, "i32:%d", i32Data); break;
+		case BsData_Type_u64: sprintf(buf, "u64:%#018llx", u64Data); break;
+		case BsData_Type_i64: sprintf(buf, "i64:%lld", i64Data); break;
+		case BsData_Type_f32: sprintf(buf, "f32:%f", f32Data); break;
+		case BsData_Type_f64: sprintf(buf, "f64:%lf", f64Data); break;
+		default: sprintf(buf, "<Not base data>"); break;
+	}
+	return std::string(buf);
+}
+
+int Hcpl_tokenize(const std::string &str, std::vector<Hcpl_Token> &tokens) {
 	tokens.clear();
 	std::stack<size_t> brkStk;
 	int lineId = 1;
@@ -57,6 +75,7 @@ int Hcpl_tokenize(const std::string &str, std::vector<Hcpl_Token> &tokens)
 			while (r + 1 < str.size() && (isLetter(str[r + 1] || isNumber(str[r + 1]) || str[r + 1] == '.'))) r++;
 			u64 data = 0; u8 type = 0;
 			tk.strData = str.substr(l, r - l + 1);
+			tk.type = Hcpl_TokenType::Const;
 			Lib_readData(tk.strData.c_str(), &tk.data.u64Data, &tk.data.type);
 			if (type == BsData_Type_void) {
 				printf("line %d: invalid syntax on \"%s\"", lineId, tk.strData.c_str());
@@ -189,7 +208,8 @@ int Hcpl_tokenize(const std::string &str, std::vector<Hcpl_Token> &tokens)
 					break;
 				case ':' :
 					tk.type = Hcpl_TokenType::Oper;
-					tk.opInfo.type = OperType::Cvt;
+					if (str[l + 1] == ':') tk.opInfo.type = OperType::Scope, r++;
+					else tk.opInfo.type = OperType::Cvt;
 					break;
 				default :
 					printf("line %d: invalid symbol %c\n", lineId, str[l]);

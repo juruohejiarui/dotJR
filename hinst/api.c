@@ -14,7 +14,7 @@ const char *HInst_cmdStr[] =  {
 	"andMov",	"orMov",	"xorMov",	"shlMov",	"shrMov",
 	"not",		"lnot",
 	"inc",		"dec",
-	"ptrAdd",	"ptrSub",	"ptrInc",	"ptrDec",
+	"ptrAdd",	"ptrSub",	"ptrInc",	"ptrDec", 	"ptrDump",
 	"new",		"arrNew",
 	"cmp",		"ptrCmp",
 	"jmp",

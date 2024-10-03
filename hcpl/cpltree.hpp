@@ -4,7 +4,7 @@
 
 enum class CplNodeType {
 	Expr, Gener, Type, Const, Iden, Oper,
-	NspDef, ClsDef, EnumDef, FuncDef, VarDef,
+	NspDef, ClsDef, EnumDef, FuncDef, VarDef, VarDefBlock,
 	Using,
 	Block, Cond, Loop, Switch, Continue, Break, Return,
 	SrcRoot, SymRoot
@@ -14,6 +14,8 @@ enum class IdenAccessType {
 	Public, Protected, Private
 };
 
+std::string IdenAccessType_toString(IdenAccessType val);
+
 // Because I dont want to use inherentation
 // there is no contruction and destruction function and every STL members should be initialized manually
 struct CplNode {
@@ -21,16 +23,20 @@ struct CplNode {
 	// if this node is a definition node, then the token is the identifier token
 	Hcpl_Token token;
 	int locVarNum = 0;
+	virtual std::string toString(int dep = 0);
 };
 
 struct ExprNode : CplNode {
 	BsData constData;
+	virtual std::string toString(int dep = 0);
 };
 struct ExprRootNode : ExprNode {
 	ExprNode *expr;
+	virtual std::string toString(int dep = 0);
 };
 struct OperNode : ExprNode {
 	ExprNode *lOperand = nullptr, *rOperand = nullptr;
+	virtual std::string toString(int dep = 0);
 };
 static __always_inline void CplNode_initOperNode(OperNode *opNode, const Hcpl_Token &token) {
 	opNode->type = CplNodeType::Oper;
@@ -53,6 +59,7 @@ struct TypeNode : ExprNode {
 	// if hasGener == 1, then this list represents the generic parameters
 	// if isFunc == 1, then this list represents the parameters type
 	std::vector<TypeNode *> params;
+	virtual std::string toString(int dep = 0);
 };
 
 
@@ -60,14 +67,16 @@ struct IdenNode : ExprNode {
 	int isFunc = 0;
 	std::vector<TypeNode *> gener;
 	std::vector<ExprNode *> param;
+	virtual std::string toString(int dep = 0);
 };
 
 struct EnumNode : CplNode {
 	IdenAccessType access;
 	// if this enum class is an inner class, then this field points to the class, namespace or function that it belongs to
 	CplNode *belong = nullptr;
-	std::vector<CplNode *> Iden;
-	std::vector<CplNode *> valExpr;
+	std::vector<std::string> iden;
+	std::vector<ExprNode *> valExpr;
+	virtual std::string toString(int dep = 0);
 };
 
 #define Hcpl_DefNode_Attr_Override	(1ul << 0)
@@ -75,9 +84,15 @@ struct EnumNode : CplNode {
 #define Hcpl_DefNode_Attr_Local		(1ul << 2)
 
 struct VarNode : CplNode {
-	IdenAccessType access;
 	TypeNode *varType = nullptr;
 	ExprNode *initExpr = nullptr;
+};
+
+struct VarDefNode : CplNode {
+	CplNode *belong;
+	IdenAccessType access;
+	std::vector<VarNode *> vars;
+	virtual std::string toString(int dep = 0);
 };
 
 struct UsingNode : CplNode {
@@ -98,7 +113,7 @@ struct ClsNode : CplNode {
 	IdenAccessType access;
 	std::string fullName;
 	// this field is the type of the parent class
-	CplNode *parType;
+	TypeNode *bsCls;
 	// if this class is an inner class, then this field points to the class that it belongs to
 	CplNode *belong;
 	std::vector<CplNode *> tmplList;
@@ -106,7 +121,7 @@ struct ClsNode : CplNode {
 	std::vector<EnumNode *> enm;
 	std::vector<ClsNode *> cls;
 	std::vector<FuncNode *> func;
-	std::vector<VarNode *> var;
+	std::vector<VarDefNode *> var;
 };
 
 struct NspNode : CplNode {
@@ -119,7 +134,7 @@ struct NspNode : CplNode {
 	std::vector<EnumNode *> enm;
 	std::vector<ClsNode *> cls;
 	std::vector<FuncNode *> func;
-	std::vector<VarNode *> var;
+	std::vector<VarDefNode *> var;
 };
 
 struct BlkNode : CplNode {
@@ -127,18 +142,25 @@ struct BlkNode : CplNode {
 };
 
 struct CondNode : CplNode {
-	CplNode *cond = nullptr, *succ = nullptr, *fail = nullptr;
+	ExprNode *cond = nullptr;
+	CplNode *succ = nullptr, *fail = nullptr;
 };
 
 struct LoopNode : CplNode {
-	CplNode *init = nullptr, *cond = nullptr, *content = nullptr, *modify = nullptr;
+	CplNode *init = nullptr, *content = nullptr;
+	ExprNode *cond = nullptr, *modify = nullptr;
 };
 struct CtrlNode : CplNode {
 	CplNode *target = nullptr;
 };
 struct SwitchNode : CplNode {
 	std::vector<CplNode *> content;
-	std::vector< std::pair<CplNode *, size_t> > cases;
+	ExprNode *expr;
+	std::vector<size_t> cases;
+};
+
+struct ReturnNode : CplNode {
+	ExprNode *expr;
 };
 
 

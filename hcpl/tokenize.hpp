@@ -17,6 +17,7 @@ struct BsData {
 		f64 f64Data;
 	};
 	u8 type;
+	std::string toString();
 };
 
 BsData Hcpl_calcConst(const BsData &x, const BsData &y);
@@ -55,6 +56,8 @@ enum class OperType {
 	New, GetAddr, GetVal, Lnot, Not, Minus, Cvt, PInc, PDec,
 	// weight 14
 	Idx, SInc, SDec, Mem,
+	// weight 15
+	Scope,
 };
 
 #define Hcpl_operNum	46

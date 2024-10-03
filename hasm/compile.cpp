@@ -98,7 +98,7 @@ static int makeInst(const std::vector<Hasm_Token> &tokens, int fr, int &to, Comp
 		// otherwise, just add this argument to the list
 		argTokens.push_back(&tokens[to + 2]);
 		if (tokens[to + 2].type != Hasm_TokenType::BsData && tokens[to + 2].type != Hasm_TokenType::StrData) {
-			printf("line %d: invalid syntax for argument list \"%s\"", tokens[to + 2].lineId, tokens[to + 2].strData);
+			printf("line %d: invalid syntax for argument list \"%s\"", tokens[to + 2].lineId, tokens[to + 2].strData.c_str());
 			return Res_SeriousError;
 		}
 	}
@@ -160,7 +160,7 @@ static int makeInst(const std::vector<Hasm_Token> &tokens, int fr, int &to, Comp
 	memcpy(hinst, &hdr, sizeof(HInstHdr));
 	if (extType != -1) HInst_setExtType(hinst, extType);
 	printf("%08x size=%d ", *(u32 *)hinst, instSize);
-	for (int i = 0; i < args.size(); i++) HInst_setArg(hinst, i, args[i]), printf("arg[%d]:%#018lx\t", i, args[i]);
+	for (int i = 0; i < args.size(); i++) HInst_setArg(hinst, i, args[i]), printf("arg[%d]:%#010lx\t", i, args[i]);
 	putchar('\n');
 
 	pkg->inst.push_back(std::make_tuple(hinst, instSize));
@@ -203,7 +203,7 @@ static int makeDefine(const std::vector<Hasm_Token> &tokens, int fr, int &to, Co
 					// add a tuple for this data
 					pkg->gloData.push_back(std::make_tuple(pkg->curGloSize, sec.data, (u8)fir.data));
 				} else {
-					printf("line %d: invalid syntax\n");
+					printf("line %d: invalid syntax\n", sec.lineId);
 					return Res_SeriousError;
 				}
 				pkg->curGloSize += size;
@@ -217,7 +217,7 @@ static int makeDefine(const std::vector<Hasm_Token> &tokens, int fr, int &to, Co
 					pkg->gloData.push_back(std::make_tuple(pkg->curGloSize, size, (u8)fir.data));
 					pkg->curGloSize += size;
 				} else {
-					printf("line %d: invalid syntax\n");
+					printf("line %d: invalid syntax\n", sec.lineId);
 					return Res_SeriousError;
 				}
 				break;
@@ -252,7 +252,7 @@ static int makeDefine(const std::vector<Hasm_Token> &tokens, int fr, int &to, Co
 				// make a function descriptor
 				auto &sec = tokens[++to];
 				if (sec.type != Hasm_TokenType::StrData) {
-					printf("line %d: invalid syntax\n");
+					printf("line %d: invalid syntax\n", sec.lineId);
 					return 1;
 				}
 				auto &name = sec.strData;

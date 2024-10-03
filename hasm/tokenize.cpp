@@ -32,7 +32,7 @@ int Hasm_tokenize(const std::string &str, std::vector<Hasm_Token> &tokens) {
 			tk.type = Hasm_TokenType::BsData;
 			Lib_readData(cstr + l, &tk.data, &tk.dataType);
 			if (tk.dataType == BsData_Type_generic) {
-				printf("line %d: invalid syntax on \"%s\"", lineId, str.substr(l, r - l + 1));
+				printf("line %d: invalid syntax on \"%s\"", lineId, str.substr(l, r - l + 1).c_str());
 				error = 1;
 			}
 		} else if (isLetter(str[l])) {
