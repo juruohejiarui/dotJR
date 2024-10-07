@@ -72,7 +72,7 @@ int Hcpl_tokenize(const std::string &str, std::vector<Hcpl_Token> &tokens) {
 				tk.type = Hcpl_TokenType::Keyword;
 			} else tk.type = Hcpl_TokenType::Iden;
 		} else if (isNumber(str[l])) {
-			while (r + 1 < str.size() && (isLetter(str[r + 1] || isNumber(str[r + 1]) || str[r + 1] == '.'))) r++;
+			while (r + 1 < str.size() && (isLetter(str[r + 1]) || isNumber(str[r + 1]) || str[r + 1] == '.')) r++;
 			u64 data = 0; u8 type = 0;
 			tk.strData = str.substr(l, r - l + 1);
 			tk.type = Hcpl_TokenType::Const;

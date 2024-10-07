@@ -28,21 +28,21 @@ namespace Base#Algorithm {
 }
 namespace Base {
 	public class Array<$T$> {
-		private var : T[] data;
-		private var : ulong size, capacity;
-		public func @init() : void{
+		private var data : T[];
+		private var size : ulong, capacity : ulong;
+		public func @init() : void {
 			size = 0, capacity = 0;
 		}
 		public func append(x : T) : void {
 			if (capacity == 0) {
 				capacity = 1, size = 1;
-				data = new T[1];
+				data = $T[1];
 				data[0] = x;
 				return ;
 			} else {
 				if (capacity == size) {
 					capacity <<= 1;
-					var newData = new T[capacity];
+					var newData = $T[capacity];
 					copy(&data, &newData, size);
 					data = newData;
 				}

@@ -28,6 +28,8 @@ struct CplNode {
 
 struct ExprNode : CplNode {
 	BsData constData;
+	ExprNode();
+	bool isConst();
 	virtual std::string toString(int dep = 0);
 };
 struct ExprRootNode : ExprNode {
@@ -97,6 +99,7 @@ struct VarDefNode : CplNode {
 
 struct UsingNode : CplNode {
 	std::vector<std::string> path;
+	virtual std::string toString(int dep = 0);
 };
 
 struct FuncNode : CplNode {
@@ -107,6 +110,7 @@ struct FuncNode : CplNode {
 	std::string fullName;
 	std::vector<CplNode *> tmplList;
 	std::vector<VarNode *> paramList;
+	virtual std::string toString(int dep = 0);
 };
 
 struct ClsNode : CplNode {
@@ -122,6 +126,7 @@ struct ClsNode : CplNode {
 	std::vector<ClsNode *> cls;
 	std::vector<FuncNode *> func;
 	std::vector<VarDefNode *> var;
+	virtual std::string toString(int dep = 0);
 };
 
 struct NspNode : CplNode {
@@ -135,20 +140,24 @@ struct NspNode : CplNode {
 	std::vector<ClsNode *> cls;
 	std::vector<FuncNode *> func;
 	std::vector<VarDefNode *> var;
+	virtual std::string toString(int dep = 0);
 };
 
 struct BlkNode : CplNode {
 	std::vector<CplNode *> child;
+	virtual std::string toString(int dep = 0);
 };
 
 struct CondNode : CplNode {
 	ExprNode *cond = nullptr;
 	CplNode *succ = nullptr, *fail = nullptr;
+	virtual std::string toString(int dep = 0);
 };
 
 struct LoopNode : CplNode {
 	CplNode *init = nullptr, *content = nullptr;
 	ExprNode *cond = nullptr, *modify = nullptr;
+	virtual std::string toString(int dep = 0);
 };
 struct CtrlNode : CplNode {
 	CplNode *target = nullptr;
@@ -157,10 +166,12 @@ struct SwitchNode : CplNode {
 	std::vector<CplNode *> content;
 	ExprNode *expr;
 	std::vector<size_t> cases;
+	virtual std::string toString(int dep = 0);
 };
 
 struct ReturnNode : CplNode {
 	ExprNode *expr;
+	virtual std::string toString(int dep = 0);
 };
 
 

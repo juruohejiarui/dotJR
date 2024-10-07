@@ -1,7 +1,9 @@
 #include "tokenize.hpp"
 #include "cpltree.hpp"
 #include <fstream>
+#include <iostream>
 int main(int argc, char **argv) {
+	fflush(stdout);
 	if (argc == 1) {
 		std::ifstream ifs("./test1.hs");
 		std::string str, line;
@@ -10,7 +12,9 @@ int main(int argc, char **argv) {
 		std::vector<Hcpl_Token> tokens;
 		Hcpl_tokenize(str, tokens);
 		CplNode *root;
-		Hcpl_makeCplTree(tokens, CplNodeType::SrcRoot, root);
+		int res = Hcpl_makeCplTree(tokens, CplNodeType::SrcRoot, root);
+		printf("res=%d\n", res);
+		std::cout << root->toString();
 		return 0;
 	}
 	return 0;

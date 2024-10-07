@@ -27,9 +27,9 @@ std::stack<CplNode *> brkStk, lpStk;
 		Hcpl_Token tk = (token); \
 		if (tk.type != Hcpl_TokenType::Keyword) break; \
 		switch (tk.kwType) { \
-			case KeywordType::Private: 	node->access = IdenAccessType::Private; break; \
-			case KeywordType::Public: 		node->access = IdenAccessType::Public; break; \
-			case KeywordType::Protected: 	node->access = IdenAccessType::Protected; break; \
+			case KeywordType::Private: 	(node)->access = IdenAccessType::Private; break; \
+			case KeywordType::Public: 	(node)->access = IdenAccessType::Public; break; \
+			case KeywordType::Protected:(node)->access = IdenAccessType::Protected; break; \
 		} \
 	} while (0)
 
@@ -88,6 +88,17 @@ static int parseType(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t to
 	return Res_SeriousError;
 }
 
+static void calcConst(OperNode *node) {
+	BsData l, r;
+	if (node->lOperand != nullptr) {
+		if (node->lOperand->type == CplNodeType::Oper) calcConst((OperNode *)node->lOperand);
+		
+	}
+	return ;
+	NotConst:
+	node->constData.type = BsData_Type_void;
+}
+
 static int parseExpr(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t to, ExprNode *&root, CplNode *father) {
 	int errorPos = 0, res = 0, shift = 0;
 	bool needType = false, needClass = false;
@@ -102,6 +113,7 @@ static int parseExpr(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t to
 				case OperType::Mul: relOp = OperType::GetVal; break;
 				case OperType::And: relOp = OperType::GetAddr; break;
 				case OperType::Sub: relOp = OperType::Minus; break;
+				default: relOp = op; break;
 			}
 		} else relOp = op;
 		return std::make_tuple(relOp, Hcpl_operWeight[(int)relOp]);
@@ -134,6 +146,7 @@ static int parseExpr(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t to
 			printf("line %d: Error on parsing expression\n", ele[l]->token.lineId);
 		return pos;
 	};
+	
 	// make the element list
 	for (size_t l = fr, r = l; l <= to; l = ++r) {
 		switch (tokens[l].type) {
@@ -201,6 +214,7 @@ static int parseExpr(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t to
 				}
 				// is a function call
 				if (isSpecBrk(tokens[l + 1], BrkType::SmallL)) {
+					idenNode->isFunc = 1;
 					for (size_t x = l + 2, y = x; x < tokens[l + 1].brkInfo.pir; x = ++y) {
 						while (!isSpecOper(tokens[y], OperType::Comma) && y < tokens[l + 1].brkInfo.pir)
 							skipBrk(tokens[y], y), y++;
@@ -222,6 +236,10 @@ static int parseExpr(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t to
 	while (!parseQue.empty()) {
 		auto u = parseQue.front(); parseQue.pop();
 		int pos = argmin(std::get<0>(u), std::get<1>(u));
+		if (pos == -1) {
+			errorPos = std::get<0>(u);
+			goto SyntaxError;
+		}
 		*std::get<2>(u) = ele[pos];
 		if (pos > std::get<0>(u)) parseQue.push(std::make_tuple(std::get<0>(u), pos - 1, &((OperNode *)ele[pos])->lOperand));
 		if (pos < std::get<1>(u)) parseQue.push(std::make_tuple(pos + 1, std::get<1>(u), &((OperNode *)ele[pos])->rOperand));
@@ -409,21 +427,21 @@ static __always_inline int parseVarDef(const std::vector<Hcpl_Token> &tokens, si
 		if (fir.type != Hcpl_TokenType::Iden) { errorPos = l; goto SyntaxError; }
 		VarNode *varNode = new VarNode(); varNode->type = CplNodeType::VarDef;
 		varNode->token = fir;
-		if (isSpecOper(tokens[l], OperType::Cvt)) {
+		r = l;
+		if (isSpecOper(tokens[l + 1], OperType::Cvt)) {
 			while (!isSpecOper(tokens[r], OperType::Ass) && !isSpecOper(tokens[r], OperType::Comma) && r < to) 
 				skipBrk(tokens[r], r), r++;
-			res |= parseType(tokens, l + 1, r - 1, varNode->varType);
+			res |= parseType(tokens, l + 2, r - 1, varNode->varType);
 			if (res & Res_SeriousError) return res;
 			l = r;
-		} else varNode->varType = nullptr;
+		} else varNode->varType = nullptr, r = ++l;
 		if (isSpecOper(tokens[l], OperType::Ass)) {
 			while (!isSpecOper(tokens[r], OperType::Comma) && r < to) 
 				skipBrk(tokens[r], r), r++;
 			res |= parseExpr(tokens, l + 1, r - 1, varNode->initExpr, varNode);
 			if (res & Res_SeriousError) return res;
-			r--;
-		} 
-		r++;
+			l = r;
+		} else r = l;
 		if (!isSpecOper(tokens[r], OperType::Comma) && r != to) {
 			errorPos = r;
 			goto SyntaxError;
@@ -431,6 +449,7 @@ static __always_inline int parseVarDef(const std::vector<Hcpl_Token> &tokens, si
 		node->locVarNum++;
 		node->vars.push_back(varNode);
 	}
+	return res;
 	SyntaxError:
 	printf("line %d: variable definition syntax error on \"%s\"\n", tokens[errorPos].lineId, tokens[errorPos].strData.c_str());
 	return Res_SeriousError;
@@ -439,7 +458,7 @@ static __always_inline int parseVarDef(const std::vector<Hcpl_Token> &tokens, si
 
 static __always_inline int parseFunc(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
 	FuncNode *node = new FuncNode(); root = node, node->type = CplNodeType::FuncDef;
-	int pre = fr, errorPos = fr, res;
+	int pre = fr, errorPos = fr, res = 0;
 	// set attribute "fixed"
 	if (pre && isSpecKw(tokens[pre - 1], KeywordType::Fixed))
 		node->attr |= Hcpl_DefNode_Attr_Fixed, pre--;
@@ -547,7 +566,7 @@ static __always_inline int parseCls(const std::vector<Hcpl_Token> &tokens, size_
 	int res = 0;
 	node->token = tokens[fr + 1];
 	to = fr + 1;
-	// there is base class
+	// there is generic template
 	if (isSpecBrk(tokens[fr + 2], BrkType::GenericL)) {
 		to = fr + 2;
 		for (size_t l = to + 1, r = l; l < tokens[to].brkInfo.pir; l = ++r) {
@@ -561,16 +580,19 @@ static __always_inline int parseCls(const std::vector<Hcpl_Token> &tokens, size_
 			gener->token = tokens[l];
 			node->tmplList.push_back(gener);
 		}
-	}
-	if (isSpecOper(tokens[fr + 2], OperType::Cvt)) {
-		fr = ++to;
+		fr = tokens[to].brkInfo.pir + 1;
+		to = fr;
+	} else to = (fr += 2);
+	// there is base class
+	if (isSpecOper(tokens[fr], OperType::Cvt)) {
+		to = fr;
 		while (!isSpecBrk(tokens[to], BrkType::LargeL)) to++;
-		res |= parseType(tokens, fr, to - 1, node->bsCls);
+		res |= parseType(tokens, fr + 1, to - 1, node->bsCls);
 		if (node->bsCls->attr) {
 			printf("line %d: invalid base class", tokens[fr].lineId);
 			res |= Res_Error;
 		}
-	} else to++;
+	} else to = fr;
 	if (!isSpecBrk(tokens[to], BrkType::LargeL)) {
 		printf("line %d: invalid syntax \"%s\"", tokens[to].lineId, tokens[to].strData.c_str());
 		return Res_SeriousError;
@@ -734,8 +756,7 @@ static int parse(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, C
 	return 0;
 }
 
-int Hcpl_makeCplTree(const std::vector<Hcpl_Token> &tokens, CplNodeType rootType, CplNode *&root)
-{
+int Hcpl_makeCplTree(const std::vector<Hcpl_Token> &tokens, CplNodeType rootType, CplNode *&root) {
     root = new BlkNode(); 
 	BlkNode *node = new BlkNode(); root = node; node->type = CplNodeType::SrcRoot;
 	CplNode *child;
@@ -759,7 +780,7 @@ int Hcpl_makeCplTree(const std::vector<Hcpl_Token> &tokens, CplNodeType rootType
 }
 
 #pragma region toString()
-static std::string getIndent(int dep) { std::string str = ""; for (int i = 0; i < dep; i++) str.append("\t"); return str; }
+static std::string getIndent(int dep) { std::string str = ""; for (int i = 0; i < dep; i++) str.append("    "); return str; }
 
 std::string IdenAccessType_toString(IdenAccessType val) {
     switch (val) {
@@ -779,8 +800,17 @@ std::string CplNode::toString(int dep) {
 		"SrcRoot", "SymRoot"
 	};
 	static char buf[128];
-	sprintf(buf, "%10s locVal:%2d\n", typeStr[(int)this->type], this->locVarNum);
+	sprintf(buf, "%10s strData:%s locVal:%2d\n", typeStr[(int)this->type], token.strData.c_str(), this->locVarNum);
 	return getIndent(dep) + std::string(buf);
+}
+
+ExprNode::ExprNode() {
+	constData.type = BsData_Type_void;
+	constData.u64Data = 0;
+}
+
+bool ExprNode::isConst() {
+    return constData.type != BsData_Type_void;
 }
 
 std::string ExprNode::toString(int dep) { return getIndent(dep) + "expr " + token.data.toString() + "\n"; }
@@ -807,7 +837,7 @@ std::string OperNode::toString(int dep) {
 	};
 	std::string res = getIndent(dep) + "Oper " + opStr[(int)token.opInfo.type];
 	res.push_back('\n');
-	if (lOperand != nullptr) res.append(lOperand->toString(dep + 1) + '\n');
+	if (lOperand != nullptr) res.append(lOperand->toString(dep + 1));
 	if (rOperand != nullptr) res.append(rOperand->toString(dep + 1));
 	return res;
 }
@@ -826,21 +856,21 @@ std::string TypeNode::toString(int dep) {
 		for (int i = 0; i < params.size(); i++)
 			res.append(params[i]->toString(dep + 1));
 	} else if (attr & TypeNode_Attr_hasGener) {
-		res.append("generic " + token.strData);
+		res.append("generic " + token.strData + "\n");
 		for (int i = 0; i < params.size(); i++)
 			res.append(params[i]->toString(dep + 1));
-	} else res = token.strData;
+	} else res.append(token.strData + "\n");
 	return res;
 }
 
 std::string IdenNode::toString(int dep) {
-	std::string res = getIndent(dep) + "Iden " + token.strData;
+	std::string res = getIndent(dep) + "Iden " + token.strData + "\n";
 	if (gener.size() > 0) {
-		res.append(getIndent(dep) + "generic:");
+		res.append(getIndent(dep) + "generic:\n");
 		for (int i = 0; i < gener.size(); i++) res.append(gener[i]->toString(dep + 1));
 	}
 	if (isFunc) {
-		res.append(getIndent(dep) + "parameters:");
+		res.append(getIndent(dep) + "parameters:\n");
 		for (int i = 0; i < param.size(); i++) res.append(param[i]->toString(dep + 1));
 	}
 	return res;
@@ -860,7 +890,7 @@ std::string EnumNode::toString(int dep) {
 }
 
 std::string VarDefNode::toString(int dep) {
-    std::string res = getIndent(dep) + "varDef " + IdenAccessType_toString(access);
+    std::string res = getIndent(dep) + "varDef " + IdenAccessType_toString(access) + "\n";
 	for (int i = 0; i < vars.size(); i++) {
 		std::string varStr = getIndent(dep + 1) + vars[i]->token.strData + "\n";
 		if (vars[i]->varType != nullptr) varStr.append(vars[i]->varType->toString(dep + 1));
@@ -870,6 +900,82 @@ std::string VarDefNode::toString(int dep) {
 	return res;
 }
 
-#pragma endregion
+std::string UsingNode::toString(int dep) {
+    std::string res = CplNode::toString(dep) + " ";
+	for (int i = 0; i < path.size(); i++) res.append("::" + path[i]);
+	return res;
+}
 
+std::string FuncNode::toString(int dep) {
+    std::string res = getIndent(dep) + "Func " + token.strData + " access:" + IdenAccessType_toString(access) + " attr:" + std::to_string(attr) + "\n";
+	if (retType != nullptr) res.append(retType->toString(dep + 1));
+	for (int i = 0; i < tmplList.size(); i++) res.append(tmplList[i]->toString(dep + 1));
+	for (int i = 0; i < paramList.size(); i++) res.append(paramList[i]->toString(dep + 1));
+	res.append(content->toString(dep + 1));
+	return res;
+}
 
+std::string ClsNode::toString(int dep) {
+    std::string res = getIndent(dep) + "Cls " + token.strData + " access:" + IdenAccessType_toString(access) + "\n";
+	if (bsCls != nullptr) res.append(bsCls->toString(dep + 1));
+	for (int i = 0; i < tmplList.size(); i++) res.append(tmplList[i]->toString(dep + 2));
+	for (UsingNode *node : usng) res.append(node->toString(dep + 1));
+	for (ClsNode *node : cls) res.append(node->toString(dep + 1));
+	for (FuncNode *node : func) res.append(node->toString(dep + 1));
+	for (EnumNode *node : enm) res.append(node->toString(dep + 1));
+	for (VarDefNode *node : var) res.append(node->toString(dep + 1));
+	return res;
+}
+
+std::string NspNode::toString(int dep) {
+	std::string res = getIndent(dep) + "Nsp " + token.strData + " access:" + IdenAccessType_toString(access) + "\n";
+    for (UsingNode *node : usng) res.append(node->toString(dep + 1));
+	for (ClsNode *node : cls) res.append(node->toString(dep + 1));
+	for (FuncNode *node : func) res.append(node->toString(dep + 1));
+	for (EnumNode *node : enm) res.append(node->toString(dep + 1));
+	for (VarDefNode *node : var) res.append(node->toString(dep + 1));
+	return res;
+}
+
+std::string BlkNode::toString(int dep) {
+    std::string res = getIndent(dep) + "Blk locVarNum:" + std::to_string(locVarNum) + "\n";
+	for (CplNode *child : child) res.append(child->toString(dep + 1));
+	return res;
+}
+
+std::string CondNode::toString(int dep) {
+    std::string res = getIndent(dep) + "Cond\n";
+	res.append(cond->toString(dep + 1));
+	res.append(getIndent(dep) + "succ:\n" + succ->toString(dep + 1));
+	if (fail != nullptr)
+		res.append(getIndent(dep) + "fail:\n" + fail->toString(dep + 1));
+	return res;
+}
+
+std::string LoopNode::toString(int dep) {
+    std::string res = getIndent(dep) + "Cond\n";
+	if (init != nullptr) res.append(getIndent(dep) + "init:\n" + init->toString(dep + 1));
+	if (cond != nullptr) res.append(getIndent(dep) + "cond:\n" + cond->toString(dep + 1));
+	if (modify != nullptr) res.append(getIndent(dep) + "modi:\n" + modify->toString(dep + 1));
+	if (content != nullptr) res.append(getIndent(dep) + "content:\n" + content->toString(dep + 1));
+	return res;
+}
+
+std::string SwitchNode::toString(int dep) {
+    std::string res = getIndent(dep) + "Switch\n";
+	res.append(expr->toString(dep + 1));
+	for (size_t pos = 0, i = 0; i < content.size(); i++) {
+		if (cases[pos] == i) res.append(getIndent(dep + 1) + "[target]\n"), pos++;
+		res.append(content[i]->toString(dep + 1));
+	}
+	return res;
+}
+
+std::string ReturnNode::toString(int dep) {
+    std::string res = getIndent(dep) + "Return\n";
+	if (expr != nullptr) res.append(expr->toString(dep + 1));
+	else res.append(getIndent(dep + 1) + "void\n");
+	return res;
+}
+
+#pragma endreion
