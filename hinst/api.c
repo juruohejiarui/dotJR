@@ -8,6 +8,7 @@ const char *HInst_cmdStr[] =  {
 	"loadFPtr",
 	"get",		"set",
 	"push",		"pop",
+	"ext",
 	"add",		"sub",		"mul",		"div",		"mod",
 	"and",		"or",		"xor",		"shl",		"shr",
 	"addMov",	"subMov",	"mulMov",	"divMov",	"modMov",	
