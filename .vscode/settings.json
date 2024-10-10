@@ -1,5 +1,6 @@
 {
 	"files.associations": {
+		"*.h": "c",
 		"desc.h": "c",
 		"cstdlib": "c",
 		"array": "cpp",
@@ -59,6 +60,29 @@
 		"text_encoding": "cpp",
 		"typeinfo": "cpp",
 		"hash_map": "cpp",
-		"list": "cpp"
+		"list": "cpp",
+		"ios": "cpp",
+		"locale": "cpp",
+		"mutex": "cpp",
+		"queue": "cpp",
+		"ranges": "cpp",
+		"ratio": "cpp",
+		"stack": "cpp",
+		"stop_token": "cpp",
+		"thread": "cpp",
+		"xfacet": "cpp",
+		"xiosbase": "cpp",
+		"xlocale": "cpp",
+		"xlocbuf": "cpp",
+		"xlocinfo": "cpp",
+		"xlocmes": "cpp",
+		"xlocmon": "cpp",
+		"xlocnum": "cpp",
+		"xloctime": "cpp",
+		"xmemory": "cpp",
+		"xstring": "cpp",
+		"xtr1common": "cpp",
+		"xtree": "cpp",
+		"xutility": "cpp"
 	}
 }

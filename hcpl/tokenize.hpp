@@ -20,8 +20,6 @@ struct BsData {
 	std::string toString();
 };
 
-BsData Hcpl_calcConst(const BsData &x, const BsData &y);
-
 enum class Hcpl_TokenType {
 	Const, String, Iden, Oper, ExprEnd,
 	BrkSt, BrkEd, Keyword, 
@@ -63,6 +61,9 @@ enum class OperType {
 #define Hcpl_operNum	46
 #define Hcpl_operWeightShift 100
 extern const int Hcpl_operWeight[];
+
+BsData calcConst(OperType oper, const BsData &x, const BsData &y);
+static __always_inline__ bool isConst(const BsData &x) { return x.type != BsData_Type_void; }
 
 enum class KeywordType {
 	If, Else, While, For, Switch, Case, Break, Continue, Return, Using, Namespace, Class, FuncDef, VarDef, EnumDef, Public, Protected, Private, Override, Fixed

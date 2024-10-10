@@ -1,6 +1,7 @@
 #include "tokenize.hpp"
 #include <cstring>
 #include <stack>
+#include <format>
 
 const int Hcpl_operWeight[] = {
 	1,
@@ -29,27 +30,27 @@ static int getKwId(const std::string &str) {
 	return -1;
 }
 
-BsData calcConst(const BsData &x, const BsData &y) {
+BsData calcConst(OperType oper, const BsData &x, const BsData &y) {
 	u8 tgrType;
+	// if there is two operands, then convert them to the larger type
+	
 	return BsData();
 }
 
 std::string BsData::toString() {
-	static char buf[64];
 	switch (type) {
-		case BsData_Type_u8: sprintf(buf, "u8:%#04x", u8Data); break; 
-		case BsData_Type_i8: sprintf(buf, "i8:%d,\'%c\'", i8Data, i8Data); break;
-		case BsData_Type_u16: sprintf(buf, "u16:%#06x", u16Data); break;
-		case BsData_Type_i16: sprintf(buf, "i16:%d", i16Data); break;
-		case BsData_Type_u32: sprintf(buf, "u32:%#010x", u32Data); break;
-		case BsData_Type_i32: sprintf(buf, "i32:%d", i32Data); break;
-		case BsData_Type_u64: sprintf(buf, "u64:%#018llx", u64Data); break;
-		case BsData_Type_i64: sprintf(buf, "i64:%lld", i64Data); break;
-		case BsData_Type_f32: sprintf(buf, "f32:%f", f32Data); break;
-		case BsData_Type_f64: sprintf(buf, "f64:%lf", f64Data); break;
-		default: sprintf(buf, "<Not base data>"); break;
+		case BsData_Type_u8: return std::format("u8:{0:#02x}", u8Data);
+		case BsData_Type_i8: return std::format("i8:{0:d},{0}", i8Data);
+		case BsData_Type_u16: return std::format("u16:{0:#04x}", u16Data);
+		case BsData_Type_i16: return std::format("i16:{0:d}", i16Data);
+		case BsData_Type_u32: return std::format("u32:{0:#08x}", u32Data);
+		case BsData_Type_i32: return std::format("i32:{0:d}", i32Data);
+		case BsData_Type_u64: return std::format("u64:{0:#016x}", u64Data);
+		case BsData_Type_i64: return std::format("i64:{0:d}", i64Data);
+		case BsData_Type_f32:  return std::format("f32:{0}", f32Data);
+		case BsData_Type_f64:  return std::format("f64:{0}", f64Data);
+		default: return std::string("<Not Base Data>");
 	}
-	return std::string(buf);
 }
 
 int Hcpl_tokenize(const std::string &str, std::vector<Hcpl_Token> &tokens) {
@@ -77,6 +78,7 @@ int Hcpl_tokenize(const std::string &str, std::vector<Hcpl_Token> &tokens) {
 			tk.strData = str.substr(l, r - l + 1);
 			tk.type = Hcpl_TokenType::Const;
 			Lib_readData(tk.strData.c_str(), &tk.data.u64Data, &tk.data.type);
+			printf("%#018lx type:%d\n", tk.data.u64Data, tk.data.u8Data);
 			if (type == BsData_Type_void) {
 				printf("line %d: invalid syntax on \"%s\"", lineId, tk.strData.c_str());
 				return Res_Error;

@@ -3,6 +3,7 @@
 #include <tuple>
 #include <stack>
 #include <queue>
+#include <format>
 
 static int parse(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root, CplNode *father);
 static int parseKeyword(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root, CplNode *father);
@@ -92,8 +93,13 @@ static void calcConst(OperNode *node) {
 	BsData l, r;
 	if (node->lOperand != nullptr) {
 		if (node->lOperand->type == CplNodeType::Oper) calcConst((OperNode *)node->lOperand);
-		
+		l = node->lOperand->constData;
 	}
+	if (node->rOperand != nullptr) {
+		if (node->rOperand->type == CplNodeType::Oper) calcConst((OperNode *)node->rOperand);
+		r = node->rOperand->constData;
+	}
+	node->constData = calcConst(node->token.opInfo.type, l, r);
 	return ;
 	NotConst:
 	node->constData.type = BsData_Type_void;
@@ -415,7 +421,7 @@ static int parseCtrl(const std::vector<Hcpl_Token> &tokens, size_t fr , size_t &
 	return 0;
 }
 
-static __always_inline int parseVarDef(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
+static __always_inline__ int parseVarDef(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
 	VarDefNode *node = new VarDefNode(); root = node, node->type = CplNodeType::VarDefBlock;
 	if (fr) setAccess(tokens[fr - 1], node);
 	to = fr;
@@ -456,7 +462,7 @@ static __always_inline int parseVarDef(const std::vector<Hcpl_Token> &tokens, si
 
 }
 
-static __always_inline int parseFunc(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
+static __always_inline__ int parseFunc(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
 	FuncNode *node = new FuncNode(); root = node, node->type = CplNodeType::FuncDef;
 	int pre = fr, errorPos = fr, res = 0;
 	// set attribute "fixed"
@@ -527,7 +533,7 @@ static __always_inline int parseFunc(const std::vector<Hcpl_Token> &tokens, size
 	return Res_SeriousError;
 }
 
-static __always_inline int parseEnum(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
+static __always_inline__ int parseEnum(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
 	EnumNode *node = new EnumNode(); root = node, node->type = CplNodeType::EnumDef;
 	if (fr) setAccess(tokens[fr - 1], node);
 	int res = 0, errorPos = 0;
@@ -560,7 +566,7 @@ static __always_inline int parseEnum(const std::vector<Hcpl_Token> &tokens, size
 	return Res_SeriousError;
 }
 
-static __always_inline int parseCls(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
+static __always_inline__ int parseCls(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
 	ClsNode *node = new ClsNode(); root = node, node->type = CplNodeType::ClsDef;
 	if (fr) setAccess(tokens[fr - 1], node);
 	int res = 0;
@@ -623,7 +629,7 @@ static __always_inline int parseCls(const std::vector<Hcpl_Token> &tokens, size_
 	return res;
 }
 
-static __always_inline int parseNsp(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
+static __always_inline__ int parseNsp(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
 	NspNode *node = new NspNode(); root = node, node->type = CplNodeType::NspDef;
 	if (fr) setAccess(tokens[fr - 1], node);
 	int res = 0;
@@ -809,11 +815,9 @@ ExprNode::ExprNode() {
 	constData.u64Data = 0;
 }
 
-bool ExprNode::isConst() {
-    return constData.type != BsData_Type_void;
-}
+bool ExprNode::isConst() { return ::isConst(constData); }
 
-std::string ExprNode::toString(int dep) { return getIndent(dep) + "expr " + token.data.toString() + "\n"; }
+std::string ExprNode::toString(int dep) { return getIndent(dep) + "expr " + constData.toString() + "\n"; }
 
 std::string ExprRootNode::toString(int dep) { return expr->toString(dep); }
 
@@ -835,7 +839,7 @@ std::string OperNode::toString(int dep) {
 		"Idx", "SInc", "SDec", "Mem",
 		"Scope",
 	};
-	std::string res = getIndent(dep) + "Oper " + opStr[(int)token.opInfo.type];
+	std::string res = getIndent(dep) + "Oper " + opStr[(int)token.opInfo.type] + " constData:" + constData.toString();
 	res.push_back('\n');
 	if (lOperand != nullptr) res.append(lOperand->toString(dep + 1));
 	if (rOperand != nullptr) res.append(rOperand->toString(dep + 1));
@@ -848,7 +852,7 @@ std::string TypeNode::toString(int dep) {
 		res.append("pointer of\n");
 		res.append(subType->toString(dep + 1));
 	} else if (attr & TypeNode_Attr_isArr) {
-		res.append(std::to_string(dimc) + "-D array of\n");
+		res.append(std::format("{0}-D array of\n", std::to_string(dimc)));
 		res.append(subType->toString(dep + 1));
 	} else if (attr & TypeNode_Attr_isFunc) {
 		res.append("function pointer of\n");
@@ -856,7 +860,7 @@ std::string TypeNode::toString(int dep) {
 		for (int i = 0; i < params.size(); i++)
 			res.append(params[i]->toString(dep + 1));
 	} else if (attr & TypeNode_Attr_hasGener) {
-		res.append("generic " + token.strData + "\n");
+		res.append(std::format("generic {0}\n", token.strData));
 		for (int i = 0; i < params.size(); i++)
 			res.append(params[i]->toString(dep + 1));
 	} else res.append(token.strData + "\n");
@@ -864,7 +868,7 @@ std::string TypeNode::toString(int dep) {
 }
 
 std::string IdenNode::toString(int dep) {
-	std::string res = getIndent(dep) + "Iden " + token.strData + "\n";
+	std::string res = std::format("{0}Iden {1}\n", getIndent(dep), token.strData);
 	if (gener.size() > 0) {
 		res.append(getIndent(dep) + "generic:\n");
 		for (int i = 0; i < gener.size(); i++) res.append(gener[i]->toString(dep + 1));
@@ -877,7 +881,7 @@ std::string IdenNode::toString(int dep) {
 }
 
 std::string EnumNode::toString(int dep) {
-    std::string res = getIndent(dep) + "Enum " + token.strData;
+    std::string res = std::format("{0}Enum {1}\n", getIndent(dep), token.strData);
 	for (int i = 0; i < iden.size(); i++) {
 		std::string idenStr = getIndent(dep + 1) + iden[i];
 		if (valExpr[i] != nullptr) {
@@ -889,8 +893,17 @@ std::string EnumNode::toString(int dep) {
 	return res;
 }
 
+std::string VarNode::toString(int dep) {
+	std::string res = std::format("{0}var {1}\n", getIndent(dep), token.strData);
+	if (varType != nullptr)
+		res.append(varType->toString(dep + 1));
+	if (initExpr != nullptr)
+		res.append(initExpr->toString(dep + 1));
+	return res;
+}
+
 std::string VarDefNode::toString(int dep) {
-    std::string res = getIndent(dep) + "varDef " + IdenAccessType_toString(access) + "\n";
+    std::string res = std::format("{0}varDef access:{1}\n", getIndent(dep), IdenAccessType_toString(access));
 	for (int i = 0; i < vars.size(); i++) {
 		std::string varStr = getIndent(dep + 1) + vars[i]->token.strData + "\n";
 		if (vars[i]->varType != nullptr) varStr.append(vars[i]->varType->toString(dep + 1));
@@ -907,7 +920,7 @@ std::string UsingNode::toString(int dep) {
 }
 
 std::string FuncNode::toString(int dep) {
-    std::string res = getIndent(dep) + "Func " + token.strData + " access:" + IdenAccessType_toString(access) + " attr:" + std::to_string(attr) + "\n";
+	std::string res = std::format("{0}Func {1} access:{2} attr:{3}\n", getIndent(dep), token.strData, IdenAccessType_toString(access), attr);
 	if (retType != nullptr) res.append(retType->toString(dep + 1));
 	for (int i = 0; i < tmplList.size(); i++) res.append(tmplList[i]->toString(dep + 1));
 	for (int i = 0; i < paramList.size(); i++) res.append(paramList[i]->toString(dep + 1));
@@ -916,7 +929,7 @@ std::string FuncNode::toString(int dep) {
 }
 
 std::string ClsNode::toString(int dep) {
-    std::string res = getIndent(dep) + "Cls " + token.strData + " access:" + IdenAccessType_toString(access) + "\n";
+    std::string res = std::format("{0}Cls {1} access:{2}\n", getIndent(dep), token.strData, IdenAccessType_toString(access));
 	if (bsCls != nullptr) res.append(bsCls->toString(dep + 1));
 	for (int i = 0; i < tmplList.size(); i++) res.append(tmplList[i]->toString(dep + 2));
 	for (UsingNode *node : usng) res.append(node->toString(dep + 1));
@@ -928,7 +941,7 @@ std::string ClsNode::toString(int dep) {
 }
 
 std::string NspNode::toString(int dep) {
-	std::string res = getIndent(dep) + "Nsp " + token.strData + " access:" + IdenAccessType_toString(access) + "\n";
+	std::string res = std::format("{0}Nsp {1} access:{2}\n", getIndent(dep), token.strData, IdenAccessType_toString(access));
     for (UsingNode *node : usng) res.append(node->toString(dep + 1));
 	for (ClsNode *node : cls) res.append(node->toString(dep + 1));
 	for (FuncNode *node : func) res.append(node->toString(dep + 1));
@@ -938,7 +951,7 @@ std::string NspNode::toString(int dep) {
 }
 
 std::string BlkNode::toString(int dep) {
-    std::string res = getIndent(dep) + "Blk locVarNum:" + std::to_string(locVarNum) + "\n";
+    std::string res = std::format("{0}Blk locVarNum:{1:2}\n", getIndent(dep), std::to_string(locVarNum));
 	for (CplNode *child : child) res.append(child->toString(dep + 1));
 	return res;
 }
@@ -953,7 +966,7 @@ std::string CondNode::toString(int dep) {
 }
 
 std::string LoopNode::toString(int dep) {
-    std::string res = getIndent(dep) + "Cond\n";
+    std::string res = getIndent(dep) + "Loop\n";
 	if (init != nullptr) res.append(getIndent(dep) + "init:\n" + init->toString(dep + 1));
 	if (cond != nullptr) res.append(getIndent(dep) + "cond:\n" + cond->toString(dep + 1));
 	if (modify != nullptr) res.append(getIndent(dep) + "modi:\n" + modify->toString(dep + 1));
@@ -978,4 +991,4 @@ std::string ReturnNode::toString(int dep) {
 	return res;
 }
 
-#pragma endreion
+#pragma endregion

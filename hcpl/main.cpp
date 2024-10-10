@@ -4,7 +4,9 @@
 #include <iostream>
 int main(int argc, char **argv) {
 	fflush(stdout);
+	// in test mode
 	if (argc == 1) {
+		freopen("test.output", "w", stdout);
 		std::ifstream ifs("./test1.hs");
 		std::string str, line;
 		while (!ifs.eof()) std::getline(ifs, line), str.append(line), str.push_back('\n');
