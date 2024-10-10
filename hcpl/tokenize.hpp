@@ -66,7 +66,7 @@ enum class OperType {
 extern const int Hcpl_operWeight[];
 
 BsData calcConst(OperType oper, const BsData &x, const BsData &y, bool hasL, bool hasR);
-static __always_inline__ bool isConst(const BsData &x) { return x.type != BsData_Type_void; }
+static __inline__ bool isConst(const BsData &x) { return x.type != BsData_Type_void; }
 
 enum class KeywordType {
 	If, Else, While, For, Switch, Case, Break, Continue, Return, Using, Namespace, Class, FuncDef, VarDef, EnumDef, Public, Protected, Private, Override, Fixed

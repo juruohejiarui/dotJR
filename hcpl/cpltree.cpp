@@ -424,7 +424,7 @@ static int parseCtrl(const std::vector<Hcpl_Token> &tokens, size_t fr , size_t &
 	return 0;
 }
 
-static __always_inline__ int parseVarDef(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
+static __inline__ int parseVarDef(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
 	VarDefNode *node = new VarDefNode(); root = node, node->type = CplNodeType::VarDefBlock;
 	if (fr) setAccess(tokens[fr - 1], node);
 	to = fr;
@@ -465,7 +465,7 @@ static __always_inline__ int parseVarDef(const std::vector<Hcpl_Token> &tokens, 
 
 }
 
-static __always_inline__ int parseFunc(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
+static __inline__ int parseFunc(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
 	FuncNode *node = new FuncNode(); root = node, node->type = CplNodeType::FuncDef;
 	int pre = fr, errorPos = fr, res = 0;
 	// set attribute "fixed"
@@ -536,7 +536,7 @@ static __always_inline__ int parseFunc(const std::vector<Hcpl_Token> &tokens, si
 	return Res_SeriousError;
 }
 
-static __always_inline__ int parseEnum(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
+static __inline__ int parseEnum(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
 	EnumNode *node = new EnumNode(); root = node, node->type = CplNodeType::EnumDef;
 	if (fr) setAccess(tokens[fr - 1], node);
 	int res = 0, errorPos = 0;
@@ -569,7 +569,7 @@ static __always_inline__ int parseEnum(const std::vector<Hcpl_Token> &tokens, si
 	return Res_SeriousError;
 }
 
-static __always_inline__ int parseCls(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
+static __inline__ int parseCls(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
 	ClsNode *node = new ClsNode(); root = node, node->type = CplNodeType::ClsDef;
 	if (fr) setAccess(tokens[fr - 1], node);
 	int res = 0;
@@ -632,7 +632,7 @@ static __always_inline__ int parseCls(const std::vector<Hcpl_Token> &tokens, siz
 	return res;
 }
 
-static __always_inline__ int parseNsp(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
+static __inline__ int parseNsp(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
 	NspNode *node = new NspNode(); root = node, node->type = CplNodeType::NspDef;
 	if (fr) setAccess(tokens[fr - 1], node);
 	int res = 0;

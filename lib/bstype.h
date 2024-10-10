@@ -45,11 +45,11 @@ static inline int isSeparator(char ch) { return ch == '\t' || ch == ' ' || ch ==
 #define Res_SeriousError	(1ul << 1)
 
 #ifdef _MSC_VER
-#define __always_inline__ inline
+#define __inline__ inline
 #elif __APPLE__
-#define __always_inline__ __attribute__((always_inline)) inline
+#define __inline__ __attribute__((always_inline)) inline
 #elif __linux__
-#define __always_inline__ __attribute__((always_inline)) inline
+#define __inline__ __attribute__((always_inline)) inline
 #endif
 
 #ifdef _MSC_VER

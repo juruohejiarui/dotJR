@@ -40,7 +40,7 @@ struct OperNode : ExprNode {
 	ExprNode *lOperand = nullptr, *rOperand = nullptr;
 	virtual std::string toString(int dep = 0);
 };
-static __always_inline__ void CplNode_initOperNode(OperNode *opNode, const Hcpl_Token &token) {
+static __inline__ void CplNode_initOperNode(OperNode *opNode, const Hcpl_Token &token) {
 	opNode->type = CplNodeType::Oper;
 	opNode->constData.type = BsData_Type_void;
 	opNode->token = token;
