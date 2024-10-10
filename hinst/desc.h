@@ -53,23 +53,23 @@ extern const char *HInst_cmdStr[];
 //			[Dword * argNum] args
 // else :
 //		[argType] arg
-typedef struct HInstHdr {
+
+PACK(typedef struct HInstHdr {
 	u8 type;
 	union {
-		struct {
+		PACK(struct {
 			u8 argNum : 6;
 			u8 isLong : 1;
 			u8 isVarNum : 1;
-		} __attribute__ ((packed)) varArgFlag;
-		struct {
+		}) varArgFlag;
+		PACK(struct {
 			u8 argType : 7;
 			u8 isVarNum : 1;
-		} __attribute__ ((packed)) bsArgFlag;
+		}) bsArgFlag;
 		u16 argFlag;
 	};
 	u8 cmd;
-} __attribute__ ((packed)) HInstHdr;
-
+}) HInstHdr;
 
 
 #endif

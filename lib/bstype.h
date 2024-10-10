@@ -28,6 +28,11 @@ enum BsData_Type {
 #define Lib_bsdataTypeNum 20
 extern const char *Lib_bsdataTypeStr[];
 
+static inline int Lib_BsData_isInt(u8 type) { return type < BsData_Type_f32; }
+static inline int Lib_BsData_isFloat(u8 type) { return type >= BsData_Type_f32 && type <= BsData_Type_f64; }
+static inline int Lib_BsData_isSign(u8 type) { return type <= BsData_Type_i64; }
+static inline int Lib_BsData_isUnsigned(u8 type) { return Lib_BsData_isInt(type) && !Lib_BsData_isSign(type); }
+
 static inline int Lib_getBsDataSize(int type) { return type >= BsData_Type_generic ? 0 : (1 << (type & 0x3)); }
 
 const char *Lib_readData(const char *str, u64 *data, u8 *type);
@@ -39,13 +44,25 @@ static inline int isSeparator(char ch) { return ch == '\t' || ch == ' ' || ch ==
 #define Res_Error			(1ul << 0)
 #define Res_SeriousError	(1ul << 1)
 
-#ifdef _WIN64
+#ifdef _MSC_VER
 #define __always_inline__ inline
 #elif __APPLE__
 #define __always_inline__ __attribute__((always_inline)) inline
 #elif __linux__
 #define __always_inline__ __attribute__((always_inline)) inline
+#endif
 
+#ifdef _MSC_VER
+#  define PACK(...) __pragma(pack(push, 1)) __VA_ARGS__ __pragma(pack(pop))
+#elif defined(__GNUC__) || defined(__linux__) || defined(__APPLE__)
+#  define PACK(...) __VA_ARGS__ __attribute__((packed))
+#endif
+
+/* Cross-compiler alignment */
+#if defined(_MSC_VER)
+	#define ALIGNED_(x) __declspec(align(x))
+#elif defined(__GNUC__) || defined(__linux__) || defined(__APPLE__)
+	#define ALIGNED_(x) __attribute__ ((aligned(x)))
 #endif
 
 

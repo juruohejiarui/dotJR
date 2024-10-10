@@ -4,7 +4,7 @@
 #include "bstype.h"
 
 // the header for compiled obj file
-typedef struct File_ObjHeader {
+PACK(typedef struct File_ObjHeader {
 	u32 gloSymbolNum;
 	u32 funcSymbolNum;
 	u32 lblSymbolNum;
@@ -18,10 +18,10 @@ typedef struct File_ObjHeader {
 	u64 codeLen, gloLen;
 
 	u32 mainFuncSymbolId;
-} __attribute__ ((packed)) File_ObjHeader;
+}) File_ObjHeader;
 
 // the header for executable file or library file
-typedef struct File_ExecHeader {
+PACK(typedef struct File_ExecHeader {
 	u64 hash;
 	u32 gloSymbolNum;
 	u32 funcSymbolNum;
@@ -34,51 +34,52 @@ typedef struct File_ExecHeader {
 	u64 codeLen, gloLen;
 
 	u32 mainFuncSymbolId;
-} __attribute__ ((packed)) File_ExecHeader;
+}) File_ExecHeader;
 
-typedef struct File_RelyDesc {
+PACK(typedef struct File_RelyDesc {
 	u64 attribute;
 	u32 relyId;
 	u32 fullNameLen;
 	char fullName[0];
-} __attribute__ ((packed)) File_RelyDesc;
+}) File_RelyDesc;
 
-typedef struct File_FuncDesc {
+PACK(typedef struct File_FuncDesc {
 	u64 attribute;
 	u64 offset;
 	u32 id;
 	u32 fullNameLen;
 	char fullName[0];
-} __attribute__ ((packed)) File_FuncDesc;
+}) File_FuncDesc;
 
-typedef struct File_GloDesc {
+PACK(typedef struct File_GloDesc {
 	u64 attribute;
 	u64 offset;
 	u32 id;
 	u32 fullNameLen;
 	char fullName[0];
-} __attribute__ ((packed)) File_GloDesc;
+}) File_GloDesc;
 
-typedef struct File_LabelDesc {
+PACK(typedef struct File_LabelDesc {
 	u64 offset;
 	u32 fullNameLen;
 	char fullName[0];
-} __attribute__ ((packed)) File_LabelDesc;
+}) File_LabelDesc;
 
 #define File_Desc_Attribute_Relevant	(1u << 0)
 
-typedef struct File_RefDesc {
+PACK(typedef struct File_RefDesc {
 	u32 type;
 	#define File_UnfinishedDesc_Type_Code	1
 	#define File_UnfinishedDesc_Type_Glob	2
 	u32 fullNameLen;
-	union {
+	PACK(union {
 		u64 codeOffset;
 		u32 descOffset;
-	} __attribute__ ((packed));
+	});
 	char fullName[0];
-} __attribute__ ((packed)) File_RefDesc;
+}) File_RefDesc;
 
+// this macros can be compiled successfully on any platform, but the C++ extension of vscode on Windows insists that there is syntax error
 #define File_nextDesc(cur, type) ({ \
 	type *tCur = (type *)(cur); \
 	(type *)((u64)tCur + sizeof(type) + tCur->fullNameLen); \

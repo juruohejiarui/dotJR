@@ -30,14 +30,44 @@ static int getKwId(const std::string &str) {
 	return -1;
 }
 
-BsData calcConst(OperType oper, const BsData &x, const BsData &y) {
+BsData calcConst(OperType oper, const BsData &x, const BsData &y, bool hasL, bool hasR) {
 	u8 tgrType;
+	BsData a, b;
+	auto maxType = [](u8 type1, u8 type2) {
+		// if both are integer, then get the larger size
+		if (Lib_BsData_isInt(type1) && Lib_BsData_isInt(type2)) {
+			return (type1 & 3) > (type2 & 3) ? type1 : type2;
+		// if one of them is float, then get the larger float size
+		} else return std::max(type1, type2);
+	};
+	auto cvtTo = [](const BsData &data, u8 tgrType) {
+		if (data.type == tgrType) return data;
+		else {
+			BsData res;
+			res.type = tgrType;
+			if (Lib_BsData_isFloat(tgrType)) {
+				f64 f64Data = data.toF64();
+				if (tgrType == BsData_Type_f32) res.f32Data = (f32)f64Data;
+				else res.f64Data = f64Data;
+			} else if (Lib_BsData_isSign(tgrType)) {
+				res.i64Data = data.toI64();
+			} else res.u64Data = data.toU64();
+			return res;
+		}
+	};
+	if ((hasL && !isConst(x)) || (hasR && !isConst(y))) return BsData();
 	// if there is two operands, then convert them to the larger type
-	
+	if (hasL && hasR) {
+		tgrType = maxType(x.type, y.type);
+		a = cvtTo(x, tgrType), b = cvtTo(y, tgrType);
+	} else (hasL ? (tgrType = x.type, a = x) : (tgrType = y.type, b = y));
+	switch (oper) {
+		
+	}
 	return BsData();
 }
 
-std::string BsData::toString() {
+std::string BsData::toString() const {
 	switch (type) {
 		case BsData_Type_u8: return std::format("u8:{0:#02x}", u8Data);
 		case BsData_Type_i8: return std::format("i8:{0:d},{0}", i8Data);
@@ -50,6 +80,42 @@ std::string BsData::toString() {
 		case BsData_Type_f32:  return std::format("f32:{0}", f32Data);
 		case BsData_Type_f64:  return std::format("f64:{0}", f64Data);
 		default: return std::string("<Not Base Data>");
+	}
+}
+
+u64 BsData::toU64() const {
+	if (type == BsData_Type_f32 || type == BsData_Type_f64) return (u64)toF64(); 
+	return u64Data;
+}
+
+i64 BsData::toI64() const {
+	if ((type & 4) && type < BsData_Type_f32) return (i64)u64Data;
+	switch (type) {
+		case BsData_Type_i8 : return (i64)i8Data;
+		case BsData_Type_i16 : return (i64)i16Data;
+		case BsData_Type_i32 : return (i64)i32Data;
+		case BsData_Type_i64 : return i64Data;
+		case BsData_Type_f32 : return (i64)f32Data;
+		case BsData_Type_f64 : return (i64)f64Data;
+		default : return BsData_Type_void;
+	}
+}
+
+f64 BsData::toF64() const {
+	switch (type) {
+		case BsData_Type_u8:
+		case BsData_Type_u16 :
+		case BsData_Type_u32 :
+		case BsData_Type_u64 :
+			return (f64)u64Data;
+		case BsData_Type_i8 :
+		case BsData_Type_i16 :
+		case BsData_Type_i32 :
+		case BsData_Type_i64 :
+			return (f64)toI64();
+		case BsData_Type_f32 : return (f64)f32Data;
+		case BsData_Type_f64 : return f64Data;
+		default : return BsData_Type_void;
 	}
 }
 

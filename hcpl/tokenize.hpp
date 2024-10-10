@@ -17,7 +17,10 @@ struct BsData {
 		f64 f64Data;
 	};
 	u8 type;
-	std::string toString();
+	std::string toString() const;
+	u64 toU64() const;
+	i64 toI64() const;
+	f64 toF64() const;
 };
 
 enum class Hcpl_TokenType {
@@ -62,7 +65,7 @@ enum class OperType {
 #define Hcpl_operWeightShift 100
 extern const int Hcpl_operWeight[];
 
-BsData calcConst(OperType oper, const BsData &x, const BsData &y);
+BsData calcConst(OperType oper, const BsData &x, const BsData &y, bool hasL, bool hasR);
 static __always_inline__ bool isConst(const BsData &x) { return x.type != BsData_Type_void; }
 
 enum class KeywordType {

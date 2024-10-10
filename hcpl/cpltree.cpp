@@ -91,15 +91,18 @@ static int parseType(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t to
 
 static void calcConst(OperNode *node) {
 	BsData l, r;
+	bool hasL = false, hasR;
 	if (node->lOperand != nullptr) {
 		if (node->lOperand->type == CplNodeType::Oper) calcConst((OperNode *)node->lOperand);
 		l = node->lOperand->constData;
+		hasL = true;
 	}
 	if (node->rOperand != nullptr) {
 		if (node->rOperand->type == CplNodeType::Oper) calcConst((OperNode *)node->rOperand);
 		r = node->rOperand->constData;
+		hasR = true;
 	}
-	node->constData = calcConst(node->token.opInfo.type, l, r);
+	node->constData = calcConst(node->token.opInfo.type, l, r, hasL, hasR);
 	return ;
 	NotConst:
 	node->constData.type = BsData_Type_void;
