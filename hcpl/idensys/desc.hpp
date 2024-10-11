@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <deque>
+#include <memory>
 #include "../cpltree.hpp"
 
 enum class IdenType {
@@ -13,46 +14,69 @@ enum class IdenType {
 // for nsp, class, enum and variable, only prefect and NotFit are used,
 // for function, the smaller the rate is, the the fitter this function 
 enum class IdenFitRate {
-	Prefect, GenericPrefect, BaseDataConvert, NotFit,
+	Prefect, TypeConvert, NotFit,
 };
+
+static inline bool operator < (IdenFitRate a, IdenFitRate b) { return (int)a < (int)b; }
 struct Class;
 struct Enum;
 struct Function;
 struct Variable;
 struct ExprType;
+struct ExprType_Normal;
+struct ExprType_Ptr;
+struct ExprType_FuncPtr;
 struct Namespace;
 
 enum class ExprTypeCategory {
 	Ptr, FuncPtr, Normal,	
 };
 
+typedef std::map<Class *, std::shared_ptr<ExprType> > SubstiMap;
+typedef std::shared_ptr<ExprType> ExprTypePtr;
+typedef std::shared_ptr<ExprType_Normal> ExprTypePtr_Normal;
+typedef std::shared_ptr<ExprType_Ptr> ExprTypePtr_Ptr;
+typedef std::shared_ptr<ExprType_FuncPtr> ExprTypePtr_FuncPtr;
+
 struct ExprType {
 	ExprTypeCategory category;
-	virtual ExprType *deepCopy() const = 0;
-	virtual IdenFitRate fit(ExprType *type, std::map<Class *, ExprType *> &substitude) const = 0;
-	virtual ~ExprType() = 0;
+	virtual ExprTypePtr deepCopy() const = 0;
+	virtual IdenFitRate fit(ExprTypePtr type, SubstiMap &substMap) const = 0;
+	virtual ~ExprType();
+	virtual bool isGeneric() const ;
+	virtual ExprTypePtr susbtitude(const SubstiMap &substMap) const = 0;
+	ExprType() = default;
 };
 
-struct ExprType_Normal {
+struct ExprType_Normal : ExprType {
 	Class *cls;
-	std::vector<ExprType *> substitude;
-	virtual ExprType *deepCopy() const;
-	virtual IdenFitRate fit(ExprType *type, std::map<Class *, ExprType *> &substitude) const;
+	std::vector<ExprTypePtr> substList;
+	virtual ExprTypePtr deepCopy() const;
+	virtual IdenFitRate fit(ExprTypePtr type, SubstiMap &substMap) const;
+	virtual bool isGeneric() const;
+	virtual ExprTypePtr susbtitude(const SubstiMap &substMap) const;
 	virtual ~ExprType_Normal();
+	ExprTypePtr_Normal toBsType() const;
+	ExprType_Normal();
 };
 
-struct ExprType_Ptr {
-	ExprType *srcType;
-	virtual ExprType *deepCopy() const;
-	virtual IdenFitRate fit(ExprType *type, std::map<Class *, ExprType *> &substitude) const;
+struct ExprType_Ptr : ExprType {
+	ExprTypePtr srcType;
+	virtual ExprTypePtr deepCopy() const;
+	virtual IdenFitRate fit(ExprTypePtr type, SubstiMap &substMap) const;
+	virtual ExprTypePtr susbtitude(const SubstiMap &substMap) const;
 	virtual ~ExprType_Ptr();
+	ExprType_Ptr();
 };
 
-struct ExprType_FuncPtr {
-	ExprType *srcType;
-	virtual ExprType *deepCopy() const;
-	virtual IdenFitRate fit(ExprType *type, std::map<Class *, ExprType *> &substitude) const;
+struct ExprType_FuncPtr : ExprType {
+	ExprTypePtr retType;
+	std::vector<ExprTypePtr> paramType;
+	virtual ExprTypePtr deepCopy() const;
+	virtual IdenFitRate fit(ExprTypePtr type, SubstiMap &substMap) const;
+	virtual ExprTypePtr susbtitude(const SubstiMap &substMap) const;
 	virtual ~ExprType_FuncPtr();
+	ExprType_FuncPtr();
 };
 
 
@@ -65,7 +89,7 @@ struct Iden {
 	
 	Iden *parent;
 
-	virtual std::tuple<IdenFitRate, ExprType *> fit(const std::string &idenName, const std::vector<ExprType *> paramList);
+	virtual std::tuple<IdenFitRate, ExprType *> fit(const std::string &idenName, const std::vector<ExprTypePtr> &paramList, const SubstiMap &substMap);
 	virtual std::vector<Iden *> getChildren(const std::string &name, IdenAccessType *maxAcc) const = 0;
 
 	bool isClsMember();
@@ -92,11 +116,12 @@ struct Namespace {
 struct Class {
 	IdenFrame child;
 	std::vector< std::pair<std::string, Class *> > generic;
-	ExprType *bsCls;
-	u64 size;
+	ExprTypePtr_Normal bsCls;
+	bool isGeneric;
+	u64 size, dep;
 	std::vector<ClsNode *> nodes;
 	virtual std::vector<Iden *> getChildren(const std::string &name, IdenAccessType *maxAcc) const;
-	virtual std::tuple<IdenFitRate, ExprType *> fit(const std::string &idenName, const std::vector<ExprType *> paramList);	
+	virtual std::tuple<IdenFitRate, ExprTypePtr> fit(const std::string &idenName, const std::vector<ExprTypePtr> &paramList, const SubstiMap &substMap);	
 };
 
 struct Function {
@@ -104,14 +129,14 @@ struct Function {
 	ExprType *bsType;
 	FuncNode *node;
 	std::vector<Variable *> params;
-	virtual std::tuple<IdenFitRate, ExprType *> fit(const std::string &idenName, const std::vector<ExprType *> paramList);
+	virtual std::tuple<IdenFitRate, ExprTypePtr> fit(const std::string &idenName, const std::vector<ExprTypePtr> &paramList, const SubstiMap &substMap);
 };
 
 struct Variable {
 	ExprType *type;
 	BsData *constVal;
 	VarNode *node;
-	virtual std::tuple<IdenFitRate, ExprType *> fit(const std::string &idenName, const std::vector<ExprType *> paramList);
+	virtual std::tuple<IdenFitRate, ExprTypePtr> fit(const std::string &idenName, const std::vector<ExprTypePtr> &paramList, const SubstiMap &substMap);
 };
 
 struct Enum {

@@ -144,7 +144,6 @@ int Hcpl_tokenize(const std::string &str, std::vector<Hcpl_Token> &tokens) {
 			tk.strData = str.substr(l, r - l + 1);
 			tk.type = Hcpl_TokenType::Const;
 			Lib_readData(tk.strData.c_str(), &tk.data.u64Data, &tk.data.type);
-			printf("%#018lx type:%d\n", tk.data.u64Data, tk.data.u8Data);
 			if (type == BsData_Type_void) {
 				printf("line %d: invalid syntax on \"%s\"", lineId, tk.strData.c_str());
 				return Res_Error;

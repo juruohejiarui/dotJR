@@ -10,14 +10,17 @@ set(C_HEADER
 	../hinst/desc.h ../hinst/api.h)
 set(CXX_SOURCE 
 	../lib/bstype.cpp ../lib/file.cpp
-	main.cpp tokenize.cpp cpltree.cpp)
+	main.cpp
+	tokenize.cpp cpltree.cpp
+	idensys/build.cpp idensys/desc.cpp)
 set(CXX_HEADER 
 	../lib/bstype.hpp ../lib/file.hpp
 	../hinst/api.hpp 
-	tokenize.hpp cpltree.hpp)
+	tokenize.hpp cpltree.hpp
+	idensys/desc.hpp)
 
 add_executable(hcpl ${C_SOURCE} ${C_HEADER} ${CXX_SOURCE} ${CXX_HEADER})
 
 set(CMAKE_BUILD_TYPE "Debug")
 set(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -g2 -ggdb -std=c++20")
-set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -DNDEBUG -O0 -std=c++20")
+set(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -DNDEBUG -O2 -std=c++20")

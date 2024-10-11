@@ -18,6 +18,7 @@ int main(int argc, char **argv) {
 		int res = Hcpl_makeCplTree(tokens, CplNodeType::SrcRoot, root);
 		printf("res=%d\n", res);
 		std::cout << root->toString();
+		ExprTypePtr_Normal ptr = std::make_shared<ExprType_Normal>();
 		return 0;
 	}
 	return 0;
