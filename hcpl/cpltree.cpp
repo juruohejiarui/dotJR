@@ -37,9 +37,7 @@ std::stack<CplNode *> brkStk, lpStk;
 static int parseType(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t to, TypeNode *&root) {
 	TypeNode *node = new TypeNode(); root = node, node->type == CplNodeType::Type;
 	int errorPos = 0, res = 0;
-
 	if (fr > to) { errorPos = fr; goto SyntaxError; }
-
 	// ignore the () that wrap the whole type expression
 	for (; fr <= to && isSpecBrk(tokens[fr], BrkType::SmallL) && tokens[fr].brkInfo.pir == to; fr++, to--) ;
 	if (fr > to) { errorPos = fr; goto SyntaxError; }
@@ -52,6 +50,11 @@ static int parseType(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t to
 		}
 		node->token = tokens[to + 1];
 		res |= parseType(tokens, fr, to, node->subType);
+	// check if it is a reference
+	} else if (isSpecOper(tokens[to], OperType::And)) {
+		node->token = tokens[to];
+		node->attr |= TypeNode_Attr_isRef;
+		res |= parseType(tokens, fr, to - 1, node->subType);
 	// check if it is a pointer
 	} else if (isSpecOper(tokens[to], OperType::Mul)) {
 		// use the token of * to represents that this type is a pointer
@@ -851,7 +854,10 @@ std::string OperNode::toString(int dep) {
 
 std::string TypeNode::toString(int dep) {
     std::string res = getIndent(dep) + "type ";
-	if (attr & TypeNode_Attr_isPtr) {
+	if (attr & TypeNode_Attr_isRef) {
+		res.append("reference of\n");
+		res.append(subType->toString(dep + 1));
+	} else if (attr & TypeNode_Attr_isPtr) {
 		res.append("pointer of\n");
 		res.append(subType->toString(dep + 1));
 	} else if (attr & TypeNode_Attr_isArr) {

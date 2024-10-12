@@ -53,6 +53,7 @@ struct TypeNode : ExprNode {
 	#define TypeNode_Attr_isFunc	(1 << 1)
 	#define TypeNode_Attr_isArr		(1 << 2)
 	#define TypeNode_Attr_hasGener	(1 << 3)
+	#define TypeNode_Attr_isRef		(1 << 4)
 
 	// if this type is pointer, then subType is the source of the pointer
 	// if this type is array, then subType is the type of the elements

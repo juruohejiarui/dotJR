@@ -67,9 +67,9 @@ namespace Base {
 			}
 			return 0;
 		}
-		public func __get__(idx : ulong) : T { return data[idx]; }
-		public func __set__(idx : ulong, x : T) : T { data[idx] = x; }
-		public func raw() : T[] { return data; }
+		public func @idx(idx : int) : T& { return data[idx]; }
+		public func raw() : T[] { return deepCopy(data); }
+		public func rawRef() : T[]& { return data; }
 	}
 }
 

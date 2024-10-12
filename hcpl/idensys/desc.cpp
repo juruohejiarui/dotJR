@@ -1,6 +1,13 @@
 #include "desc.hpp"
 #include <type_traits>
 
+SubstiMap substitute(const SubstiMap &x, const SubstiMap &y) {
+	SubstiMap res;
+	for (auto &pir : x) res.insert(std::make_pair(pir.first, pir.second->substitute(x)));
+	return res;
+}
+
+
 bool Iden::isClsMember() { return parent->type == IdenType::Nsp; }
 
 bool Iden::isGlobal() { return parent->type == IdenType::Cls; }
@@ -11,9 +18,18 @@ ExprType::~ExprType() { }
 
 bool ExprType::isGeneric() const { return false; }
 
+ExprTypePtr_Ref ExprType::toRef() const {
+	if (!referable) return nullptr;
+	ExprTypePtr_Ref res = std::make_shared<ExprType_Ref>();
+	res->srcType = deepCopy();
+	res->srcType->referable = false;
+	return res;
+}
+
 ExprTypePtr ExprType_Normal::deepCopy() const {
 	ExprTypePtr_Normal cpy = std::make_shared<ExprType_Normal>();
 	cpy->cls = cls;
+	cpy->referable = referable;
 	cpy->substList.resize(substList.size());
 	for (int i = 0; i < substList.size(); i++)
 		cpy->substList[i] = substList[i]->deepCopy();
@@ -21,7 +37,11 @@ ExprTypePtr ExprType_Normal::deepCopy() const {
 }
 
 IdenFitRate ExprType_Normal::fit(ExprTypePtr type, SubstiMap &substMap) const {
-	if (type->category != ExprTypeCategory::Normal) return IdenFitRate::NotFit;
+	if (type->category != ExprTypeCategory::Normal) {
+		if (type->category == ExprTypeCategory::Ref && referable)
+			return std::max(IdenFitRate::TypeConvert, toRef()->fit(type, substMap));
+		else return IdenFitRate::NotFit;
+	}
 	ExprTypePtr_Normal normalType = Lib_dynCastPtr<ExprType, ExprType_Normal>(type);
 	auto fitNormal = [&](ExprTypePtr_Normal type) -> IdenFitRate {
 		if (type->cls->dep > cls->dep) return IdenFitRate::NotFit;
@@ -37,24 +57,27 @@ IdenFitRate ExprType_Normal::fit(ExprTypePtr type, SubstiMap &substMap) const {
 		}
 	};
 	if (normalType->cls->isGeneric) {
-		if (substMap.count(normalType->cls)) {
-			ExprTypePtr_Normal substi;
+		auto iter = substMap.find(normalType->cls);
+
+		if (iter != substMap.end()) {
+			if (iter->second == nullptr) {
+				iter->second = this->deepCopy();
+				return IdenFitRate::Prefect;
+			}
+			ExprTypePtr_Normal substVal;
 			{
 				auto substi_temp = substMap[normalType->cls];
 				if (substi_temp->category != ExprTypeCategory::Normal) return IdenFitRate::NotFit;
-				substi = Lib_dynCastPtr<ExprType, ExprType_Normal>(substi_temp);
+				substVal = Lib_dynCastPtr<ExprType, ExprType_Normal>(substi_temp);
 			}
 			
-			bool flag1 = substi->isGeneric(), flag2 = isGeneric();
+			bool flag1 = substVal->isGeneric(), flag2 = isGeneric();
 			if (flag1 != flag2) return IdenFitRate::NotFit;
 			// the substitution of this generic class is a generic class, then check if the substitution is the same as this expression type
 			if (flag1 && flag2) 
-				return substi->cls == cls ? IdenFitRate::Prefect : IdenFitRate::NotFit;
-			else return fitNormal(substi);
-		} else {
-			substMap.insert(std::make_pair(normalType->cls, this->deepCopy()));
-			return IdenFitRate::Prefect;
-		}
+				return substVal->cls == cls ? IdenFitRate::Prefect : IdenFitRate::NotFit;
+			else return fitNormal(substVal);
+		} else return IdenFitRate::NotFit;
 	} else return fitNormal(normalType);
 }
 
@@ -65,22 +88,24 @@ ExprType_Normal::~ExprType_Normal() {
 ExprTypePtr_Normal ExprType_Normal::toBsType() const {
 	if (cls->dep == 0) return nullptr;
     ExprTypePtr_Normal res = std::make_shared<ExprType_Normal>();
+	res->referable = referable;
 	SubstiMap substMap;
 	for (int i = 0; i < cls->generic.size(); i++) substMap.insert(std::make_pair(cls->generic[i].second, substList[i]));
-	return Lib_dynCastPtr<ExprType, ExprType_Normal>(Lib_dynCastPtr<ExprType, ExprType_Normal>(cls->bsCls->deepCopy())->susbtitude(substMap));
+	return Lib_dynCastPtr<ExprType, ExprType_Normal>(Lib_dynCastPtr<ExprType, ExprType_Normal>(cls->bsCls->deepCopy())->substitute(substMap));
 }
 
 bool ExprType_Normal::isGeneric() const {
 	return cls->isGeneric && substList.size() == 0;
 }
 
-ExprTypePtr ExprType_Normal::susbtitude(const SubstiMap &substMap) const {
+ExprTypePtr ExprType_Normal::substitute(const SubstiMap &substMap) const {
 	if (cls->isGeneric && substMap.count(cls)) return substMap.find(cls)->second;
     ExprTypePtr_Normal res = std::make_shared<ExprType_Normal>();
 	res->cls = cls;
+	res->referable = referable;
 	res->substList.resize(substList.size());
 	for (int i = 0; i < res->substList.size(); i++)
-		res->substList[i] = substList[i]->susbtitude(substMap);
+		res->substList[i] = substList[i]->substitute(substMap);
 	return res;
 }
 
@@ -92,18 +117,24 @@ ExprType_Normal::ExprType_Normal() {
 ExprTypePtr ExprType_Ptr::deepCopy() const {
    ExprTypePtr_Ptr res = std::make_shared<ExprType_Ptr>();
    res->srcType = srcType->deepCopy();
+   res->referable = referable;
    return res;
 }
 
 IdenFitRate ExprType_Ptr::fit(ExprTypePtr type, SubstiMap &substMap) const {
-    if (type->category != ExprTypeCategory::Ptr) return IdenFitRate::NotFit;
+    if (type->category != ExprTypeCategory::Ptr) {
+		if (type->category == ExprTypeCategory::Ref && referable)
+			return toRef()->fit(type, substMap);
+		return IdenFitRate::NotFit;
+	}
 	auto ptrType = Lib_dynCastPtr<ExprType, ExprType_Ptr>(type);
 	return srcType->fit(ptrType->srcType, substMap);
 }
 
-ExprTypePtr ExprType_Ptr::susbtitude(const SubstiMap &substMap) const {
+ExprTypePtr ExprType_Ptr::substitute(const SubstiMap &substMap) const {
 	ExprTypePtr_Ptr res = std::make_shared<ExprType_Ptr>();
-	res->srcType = srcType->susbtitude(substMap);
+	res->srcType = srcType->substitute(substMap);
+	res->referable = referable;
 	return res;
 }
 
@@ -117,13 +148,18 @@ ExprType_Ptr::ExprType_Ptr() {
 ExprTypePtr ExprType_FuncPtr::deepCopy() const {
 	ExprTypePtr_FuncPtr res = std::make_shared<ExprType_FuncPtr>();
 	res->retType = retType->deepCopy();
+	res->referable = referable;
 	res->paramType.resize(paramType.size());
 	for (int i = 0; i < paramType.size(); i++) res->paramType[i] = paramType[i]->deepCopy();
     return res;
 }
 
 IdenFitRate ExprType_FuncPtr::fit(ExprTypePtr type, SubstiMap &substMap) const {
-	if (type->category != ExprTypeCategory::FuncPtr) return IdenFitRate::NotFit;
+	if (type->category != ExprTypeCategory::FuncPtr) {
+		if (type->category == ExprTypeCategory::Ref && referable)
+			return std::max(IdenFitRate::TypeConvert, toRef()->fit(type, substMap));
+		return IdenFitRate::NotFit;
+	}
 	auto funcPtrType = Lib_dynCastPtr<ExprType, ExprType_FuncPtr>(type);
 	if (funcPtrType->paramType.size() != paramType.size()
 		|| funcPtrType->retType->fit(funcPtrType->retType, substMap) != IdenFitRate::Prefect)
@@ -134,12 +170,13 @@ IdenFitRate ExprType_FuncPtr::fit(ExprTypePtr type, SubstiMap &substMap) const {
 	return IdenFitRate::Prefect;
 }
 
-ExprTypePtr ExprType_FuncPtr::susbtitude(const SubstiMap &substMap) const {
+ExprTypePtr ExprType_FuncPtr::substitute(const SubstiMap &substMap) const {
    	ExprTypePtr_FuncPtr res = std::make_shared<ExprType_FuncPtr>();
-	res->retType = retType->susbtitude(substMap);
+	res->retType = retType->substitute(substMap);
+	res->referable = referable;
 	res->paramType.resize(paramType.size());
 	for (int i = 0; i < paramType.size(); i++)
-		res->paramType[i] = paramType[i]->susbtitude(substMap);
+		res->paramType[i] = paramType[i]->substitute(substMap);
 	return res;
 }
 
@@ -153,3 +190,124 @@ ExprType_FuncPtr::ExprType_FuncPtr() {
 	category = ExprTypeCategory::FuncPtr;
 	retType = nullptr;
 }
+
+ExprTypePtr ExprType_Ref::deepCopy() const {
+	ExprTypePtr_Ref res = std::make_shared<ExprType_Ref>();
+	res->srcType = srcType->deepCopy();
+	return res;
+}
+
+IdenFitRate ExprType_Ref::fit(ExprTypePtr type, SubstiMap &substMap) const {
+	if (type->category == ExprTypeCategory::Ref)
+		return srcType->fit(Lib_dynCastPtr<ExprType, ExprType_Ref>(type)->srcType, substMap);
+	if (type->category == srcType->category)
+		return std::max(IdenFitRate::TypeConvert, srcType->fit(type, substMap));
+	return IdenFitRate::NotFit;
+}
+
+ExprTypePtr ExprType_Ref::substitute(const SubstiMap &substMap) const {
+	ExprTypePtr_Ref res = std::make_shared<ExprType_Ref>();
+	res->srcType = srcType->deepCopy();
+	return res;
+}
+
+ExprType_Ref::~ExprType_Ref() { srcType = nullptr; }
+
+ExprType_Ref::ExprType_Ref() {
+	category = ExprTypeCategory::Ptr;
+}
+
+bool IdenFrame::insertChild(Iden *iden) {
+	const std::string &name = iden->name;
+	if (nsp.count(name) || cls.count(name) || var.count(name) || enm.count(name))
+		return false;
+	switch (iden->type) {
+		case IdenType::Nsp:
+			nsp.insert(std::make_pair(name, (Namespace *)iden));
+			break;
+		case IdenType::Cls:
+			cls.insert(std::make_pair(name, (Class *)iden));
+			break;
+		case IdenType::Func: {
+			auto &fList = funcList[name];
+			Function *fIden = (Function *)iden;
+			{
+				bool conflict = false;
+				// make a parameter list
+				// in python, it should be paramList = [param.varType.deepCopy() for param in fIden.params]
+				std::vector<ExprTypePtr> paramList;
+				for (Variable *param : fIden->params)
+					paramList.push_back(param->varType->deepCopy());
+				for (Function *func : fList) {
+					const auto res = func->fit(name, {}, paramList);
+					if (std::get<0>(res) == IdenFitRate::Prefect) {
+						conflict = true;
+						break;
+					}
+				}
+				if (conflict) return false;
+			}
+			fList.push_back(fIden);
+			break;
+		}
+		case IdenType::Var: var.insert(std::make_pair(name, (Variable *)iden)); break;
+		case IdenType::Enum: enm.insert(std::make_pair(name, (Enum *)iden)); break;
+		case IdenType::Error: return false;
+	}
+	return true;
+}
+
+std::vector<Iden *> IdenFrame::getChildren(const std::string &name, IdenAccessType minAcc, IdenAccessType maxAcc) {
+	std::vector<Iden *> res;
+	#define chkMap(mapName) \
+	do { \
+		auto iter = (mapName).find(name); \
+		if (iter != (mapName).end() && inRange(iter->second->access, minAcc, maxAcc)) res.push_back(iter->second); \
+	} while (0)
+
+	chkMap(nsp);
+	chkMap(cls);
+	chkMap(enm);
+	chkMap(var);
+	{
+		auto iter = funcList.find(name);
+		if (iter != funcList.end()) {
+			for (auto func : iter->second) if (inRange(func->access, minAcc, maxAcc))
+				res.push_back(func);
+		}
+	}
+ 
+	#undef chkMap
+	return res;
+}
+
+IdenFrame::~IdenFrame() {
+	for (auto &nPir : nsp) delete nPir.second;
+	for (auto &cPir : cls) delete cPir.second;
+	for (auto &fPir : funcList)
+		for (auto &func : fPir.second) delete func;
+	for (auto &vPir : var) delete vPir.second;
+	for (auto &ePir : enm) delete ePir.second;
+}
+
+Namespace::Namespace() { type = IdenType::Nsp; }
+
+std::tuple<IdenFitRate, ExprTypePtr> Function::fit(const std::string &idenName, const std::vector<ExprTypePtr> &generParam, const std::vector<ExprTypePtr> &paramList) const {
+	SubstiMap substMap = outSubst;
+	if (generParam.size() == 0) {
+		for (int i = 0; i < generic.size(); i++) substMap[generic[i].second] = nullptr;
+	} else {
+		if (generParam.size() != generic.size()) return std::make_tuple(IdenFitRate::NotFit, nullptr);
+		for (int i = 0; i < generic.size(); i++) substMap[generic[i].second] = generParam[i];
+	}
+	if (paramList.size() < defaultSt) return std::make_tuple(IdenFitRate::NotFit, nullptr);
+	IdenFitRate rate = IdenFitRate::Prefect;
+	for (int i = 0; i < paramList.size(); i++) {
+		rate = std::max(rate, paramList[i]->fit(params[i]->varType->deepCopy(), substMap));
+		if (rate == IdenFitRate::NotFit) return std::make_tuple(IdenFitRate::NotFit, nullptr);
+	}
+	for (int i = 0; i < generic.size(); i++) if (substMap[generic[i].second] == nullptr)
+		return std::make_tuple(IdenFitRate::NotFit, nullptr);
+	return std::make_tuple(rate, retType->substitute(substMap));
+}
+

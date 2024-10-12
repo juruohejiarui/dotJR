@@ -17,3 +17,5 @@ std::shared_ptr<
 Lib_dynCastPtr(std::shared_ptr<base> ptr) {
 	return std::static_pointer_cast<T>(ptr);
 }
+
+template<typename T> bool inRange(const T &val, const T &rgL, const T &rgR) { return rgL <= val && val <= rgR; }
