@@ -257,7 +257,7 @@ bool IdenFrame::insertChild(Iden *iden) {
 	return true;
 }
 
-std::vector<Iden *> IdenFrame::getChildren(const std::string &name, IdenAccessType minAcc, IdenAccessType maxAcc) {
+std::vector<Iden *> IdenFrame::getChildren(const std::string &name, IdenAccessType minAcc, IdenAccessType maxAcc) const {
 	std::vector<Iden *> res;
 	#define chkMap(mapName) \
 	do { \
@@ -293,6 +293,7 @@ IdenFrame::~IdenFrame() {
 Namespace::Namespace() { type = IdenType::Nsp; }
 
 std::tuple<IdenFitRate, ExprTypePtr> Function::fit(const std::string &idenName, const std::vector<ExprTypePtr> &generParam, const std::vector<ExprTypePtr> &paramList) const {
+	if (idenName != name) return std::make_tuple(IdenFitRate::NotFit, nullptr);
 	SubstiMap substMap = outSubst;
 	if (generParam.size() == 0) {
 		for (int i = 0; i < generic.size(); i++) substMap[generic[i].second] = nullptr;
@@ -311,3 +312,56 @@ std::tuple<IdenFitRate, ExprTypePtr> Function::fit(const std::string &idenName, 
 	return std::make_tuple(rate, retType->substitute(substMap));
 }
 
+void IdenEnvironment::chgFunc(Function *target) { curFunc = target; }
+
+void IdenEnvironment::chgClass(Class *target) { curClass = target; }
+
+void IdenEnvironment::chgNsp(Namespace *target) { curNsp = target; }
+
+void IdenEnvironment::localPush() {
+	if (local.size()) preLocalVarNum += (local.end() - 1)->var.size();
+	local.push_back(IdenFrame());
+}
+
+void IdenEnvironment::localPop() {
+	local.pop_back();
+	if (local.size()) preLocalVarNum -= (local.end() - 1)->var.size();
+}
+
+size_t IdenEnvironment::getLocalVarNum() {
+	if (local.empty()) return 0; 
+	else return (local.end() - 1)->var.size() + preLocalVarNum;
+}
+
+IdenFrame &IdenEnvironment::localTop() { return *(local.end() - 1); }
+
+std::vector<Iden *> IdenEnvironment::search(const std::vector<const std::string> &path) const {
+	std::vector<Iden *> ret;
+	auto append = [&](std::vector<Iden *> ret, const std::vector<Iden *> list) {
+		for (Iden *iden : list) ret.push_back(iden);
+	};
+	// just search the identifier with access type that larger or equal to MIN_ACC
+	auto search = [&](const IdenFrame &frm, IdenAccessType minAcc) -> std::vector<Iden *> { 
+	};
+	auto searchUsg = [&](const std::vector<Namespace *> &usgList) -> std::vector<Iden *> {
+		std::vector<Iden *> ret;
+		for (Namespace *nsp : usgList) append(ret, search(nsp->child, IdenAccessType::Public));
+		return ret;
+	};
+	if (path.size() == 0) {
+		for (int i = local.size() - 1; i >= 0; i--)
+			append(ret, local[i].getChildren(path[0]));
+		if (curClass != nullptr) append(ret, curClass->child.getChildren(path[0]));
+		for (Namespace *nsp = curNsp; nsp != nullptr; nsp = (Namespace *)nsp->parent)
+			append(ret, nsp->child.getChildren(path[0], IdenAccessType::Protected, IdenAccessType::Protected));
+	}
+	for (int i = local.size() - 1; i >= 0; i--)
+		append(ret, searchUsg(local[i].usgList));
+	if (curClass != nullptr) 
+		append(ret, searchUsg(curClass->child.usgList));
+	if (curNsp != nullptr) append(ret, search(curNsp->child, IdenAccessType::Private));
+	for (Namespace *nsp = curNsp; nsp != nullptr; nsp = (Namespace *)nsp->parent)
+		append(ret, searchUsg(nsp->child.usgList));
+	
+	return ret;
+}

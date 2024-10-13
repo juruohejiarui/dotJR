@@ -119,13 +119,13 @@ struct IdenFrame {
 	std::map<std::string, Variable *> var;
 	std::map<std::string, Enum *> enm;
 
-	std::map<std::string, Namespace *> usgList;
+	std::vector<Namespace *> usgList;
 
 	// when belong == nulptr, then this is a local frame, 
 	Iden *belong = nullptr;
 
 	bool insertChild(Iden *iden);
-	std::vector<Iden *> getChildren(const std::string &name, IdenAccessType minAcc = IdenAccessType::Private, IdenAccessType maxAcc = IdenAccessType::Public);
+	std::vector<Iden *> getChildren(const std::string &name, IdenAccessType minAcc = IdenAccessType::Private, IdenAccessType maxAcc = IdenAccessType::Public) const;
 	~IdenFrame();
 };
 
@@ -147,8 +147,13 @@ struct Class : Iden {
 };
 
 struct Function : Iden {
+	// the function label name, the entry label of the assembly of this function
+	// if this function is global function, then lblname is the same as the full name
+	// if this function is member function or inner function, then lbl may different from the full name
+	std::string lblName;
+	// generic class list
 	std::vector< std::pair<std::string, Class *> > generic;
-	ExprType *retType;
+	ExprTypePtr retType;
 	FuncNode *node;
 	std::vector<Variable *> params;
 	SubstiMap outSubst;
@@ -158,12 +163,12 @@ struct Function : Iden {
 };
 
 struct Variable : Iden {
-	ExprType *varType;
+	ExprTypePtr varType;
 	BsData *constVal;
 	VarNode *node;
 	SubstiMap outSubst;
 
-	int varId;
+	size_t offset;
 };
 
 struct Enum : Iden {
@@ -175,11 +180,17 @@ struct IdenEnvironment {
 private:
 	Namespace *curNsp;
 	Class *curClass;
+	Function *curFunc;
 	std::deque<IdenFrame> local;
+	size_t preLocalVarNum = 0;
 public:
+	void chgFunc(Function *target);
 	void chgClass(Class *target);
-	void chgNsp(Namespace *nsp);
+	void chgNsp(Namespace *target);
 	void localPush();
 	void localPop();
-	std::vector<Iden *> search(const std::vector<std::string &> ) const;
+	size_t getLocalVarNum();
+	IdenFrame &localTop();
+
+	std::vector<Iden *> search(const std::vector<const std::string> &path) const ;
 };
