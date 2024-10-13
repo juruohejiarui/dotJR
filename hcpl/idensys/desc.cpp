@@ -341,7 +341,8 @@ std::vector<Iden *> IdenEnvironment::search(const std::vector<const std::string>
 		for (Iden *iden : list) ret.push_back(iden);
 	};
 	// just search the identifier with access type that larger or equal to MIN_ACC
-	auto search = [&](const IdenFrame &frm, IdenAccessType minAcc) -> std::vector<Iden *> { 
+	auto search = [&](const IdenFrame &frm, IdenAccessType minAcc) -> std::vector<Iden *> {
+		
 	};
 	auto searchUsg = [&](const std::vector<Namespace *> &usgList) -> std::vector<Iden *> {
 		std::vector<Iden *> ret;
@@ -349,17 +350,24 @@ std::vector<Iden *> IdenEnvironment::search(const std::vector<const std::string>
 		return ret;
 	};
 	if (path.size() == 0) {
+		// search local items
 		for (int i = local.size() - 1; i >= 0; i--)
 			append(ret, local[i].getChildren(path[0]));
+		// search class members
 		if (curClass != nullptr) append(ret, curClass->child.getChildren(path[0]));
+		// search from parent namespace
 		for (Namespace *nsp = curNsp; nsp != nullptr; nsp = (Namespace *)nsp->parent)
 			append(ret, nsp->child.getChildren(path[0], IdenAccessType::Protected, IdenAccessType::Protected));
 	}
+	// search usage list of local environment
 	for (int i = local.size() - 1; i >= 0; i--)
 		append(ret, searchUsg(local[i].usgList));
+	// search usage list of class
 	if (curClass != nullptr) 
 		append(ret, searchUsg(curClass->child.usgList));
+	// search for identifier of of all access type from this namespace and the children namespace
 	if (curNsp != nullptr) append(ret, search(curNsp->child, IdenAccessType::Private));
+	// search usage list of this namespace and the parent namespace
 	for (Namespace *nsp = curNsp; nsp != nullptr; nsp = (Namespace *)nsp->parent)
 		append(ret, searchUsg(nsp->child.usgList));
 	
