@@ -100,6 +100,8 @@ namespace IdenSystem {
 		ExprType_Ref();
 	};
 
+	bool operator == (const ExprType &typeA, const ExprType &typeB);
+
 	struct Iden {
 		IdenType type;
 		IdenAccessType access = IdenAccessType::Private;
@@ -190,6 +192,7 @@ namespace IdenSystem {
 		void chgFunc(Function *target);
 		void chgClass(Class *target);
 		void chgNsp(Namespace *target);
+		Namespace *getCurNsp();
 		void localPush();
 		void localPop();
 		size_t getLocalVarNum();
@@ -197,6 +200,8 @@ namespace IdenSystem {
 
 		std::vector<Iden *> search(const std::vector<std::string> &path) const ;
 	};
+
+	bool allSpecType(const std::vector<Iden *> idens, IdenType type);
 
 	Namespace *buildGloNsp();
 

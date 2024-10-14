@@ -637,7 +637,8 @@ static __inline__ int parseCls(const std::vector<Hcpl_Token> &tokens, size_t fr,
 
 static __inline__ int parseNsp(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, CplNode *&root) {
 	NspNode *node = new NspNode(); root = node, node->type = CplNodeType::NspDef;
-	if (fr) setAccess(tokens[fr - 1], node);
+	// for now, the access type of namespace should always be public
+	node->access = IdenAccessType::Public;
 	int res = 0;
 	node->token = tokens[fr + 1];
 	to = fr + 1;

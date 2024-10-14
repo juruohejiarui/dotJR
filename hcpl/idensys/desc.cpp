@@ -8,7 +8,14 @@ namespace IdenSystem {
 		return res;
 	}
 
-    bool Iden::isClsMember() { return parent->type == IdenType::Nsp; }
+	bool operator==(const ExprType &typeA, const ExprType &typeB) {
+		if (typeA.category != typeB.category) return false;
+		switch (typeA.category) {
+			
+		}
+	}
+
+	bool Iden::isClsMember() { return parent->type == IdenType::Nsp; }
 
 	bool Iden::isGlobal() { return parent->type == IdenType::Cls; }
 
@@ -318,6 +325,8 @@ namespace IdenSystem {
 
 	void IdenEnvironment::chgNsp(Namespace *target) { curNsp = target; }
 
+	Namespace *IdenEnvironment::getCurNsp() { return curNsp; }
+
 	void IdenEnvironment::localPush() {
 		if (local.size()) preLocalVarNum += (local.end() - 1)->var.size();
 		local.push_back(IdenFrame());
@@ -379,5 +388,10 @@ namespace IdenSystem {
 			append(ret, searchUsg(nsp->child.usgList));
 		
 		return ret;
+	}
+
+	bool allSpecType(const std::vector<Iden *> idens, IdenType type) {
+		for (Iden *iden : idens) if (iden->type != type) return false;
+		return true;
 	}
 }
