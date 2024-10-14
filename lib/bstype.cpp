@@ -32,3 +32,24 @@ std::string Lib_getCodeStr(const std::string &str) {
 	res.push_back('\0');
 	return res;
 }
+
+std::vector<std::string> split(const std::string &str, const std::string &sep) {
+    std::vector<int> fil; fil.resize(sep.size() + 1);
+	std::vector<std::string> res;
+	fil[1] = fil[0] = 0;
+	for (size_t i = 2, j = 0; i <= sep.size(); i++) {
+		while (j && sep[i - 1] != sep[j]) j = fil[j];
+		if (sep[i - 1] == sep[j]) j++;
+		fil[i] = j;
+	}
+	size_t lst = 1;
+	for (size_t i = 1, j = 0; i <= str.size(); i++) {
+		while (j && (j == sep.size() || str[i - 1] != str[j])) j = fil[j];
+		if (str[i - 1] == sep[j]) j++;
+		if (j == sep.size() && i - lst + 1 >= sep.size())
+			res.push_back(str.substr(lst, i - lst + 1 - sep.size())),
+			lst = i;
+	}
+	if (lst < str.size()) res.push_back(str.substr(lst));
+	return res;
+}

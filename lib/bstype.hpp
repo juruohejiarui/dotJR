@@ -1,4 +1,5 @@
 #pragma once
+#include <vector>
 #include <string>
 #include <memory>
 #include <type_traits>
@@ -14,8 +15,10 @@ template<typename base, typename T>
 std::shared_ptr<
 	typename std::enable_if<(!std::is_same<base, T>::value) && (std::is_base_of<base, T>::value), T>::type
 >
-Lib_dynCastPtr(std::shared_ptr<base> ptr) {
+dynCastPtr(std::shared_ptr<base> ptr) {
 	return std::static_pointer_cast<T>(ptr);
 }
 
 template<typename T> bool inRange(const T &val, const T &rgL, const T &rgR) { return rgL <= val && val <= rgR; }
+
+std::vector<std::string> split(const std::string &str, const std::string &sep);
