@@ -25,6 +25,7 @@ namespace IdenSystem {
 
 	struct ExprType;
 	struct ExprType_Normal;
+	struct ExprType_Array;
 	struct ExprType_Ptr;
 	struct ExprType_FuncPtr;
 	struct ExprType_Ref;
@@ -32,7 +33,7 @@ namespace IdenSystem {
 	struct Namespace;
 
 	enum class ExprTypeCategory {
-		Ptr, FuncPtr, Ref, Normal,	
+		Ptr, FuncPtr, Ref, Array, Normal,
 	};
 
 	typedef std::map<Class *, std::shared_ptr<ExprType> > SubstiMap;
@@ -40,6 +41,7 @@ namespace IdenSystem {
 
 	typedef std::shared_ptr<ExprType> 			ExprTypePtr;
 	typedef std::shared_ptr<ExprType_Normal> 	ExprTypePtr_Normal;
+	typedef std::shared_ptr<ExprType_Array>		ExprTypePtr_Array;
 	typedef std::shared_ptr<ExprType_Ptr> 		ExprTypePtr_Ptr;
 	typedef std::shared_ptr<ExprType_FuncPtr> 	ExprTypePtr_FuncPtr;
 	typedef std::shared_ptr<ExprType_Ref> 		ExprTypePtr_Ref;
@@ -58,6 +60,9 @@ namespace IdenSystem {
 		virtual ExprTypePtr substitute(const SubstiMap &substMap) const = 0;
 		virtual ExprTypePtr_Ref toRef() const;
 		ExprType() = default;
+
+		// check whether two type expression is completely same
+		static bool equal(const ExprTypePtr &a, const ExprTypePtr &b);
 	};
 
 	struct ExprType_Normal : ExprType {
@@ -70,6 +75,16 @@ namespace IdenSystem {
 		virtual ~ExprType_Normal();
 		ExprTypePtr_Normal toBsType() const;
 		ExprType_Normal();
+	};
+
+	struct ExprType_Array : ExprType {
+		ExprTypePtr eleType = nullptr;
+		int dimc = 0;
+		virtual ExprTypePtr deepCopy() const;
+		virtual IdenFitRate fit(ExprTypePtr type, SubstiMap &substMap) const;
+		virtual ExprTypePtr substitute(const SubstiMap &substMap) const;
+		virtual ~ExprType_Array();
+		ExprType_Array();
 	};
 
 	struct ExprType_Ptr : ExprType {
@@ -100,7 +115,6 @@ namespace IdenSystem {
 		ExprType_Ref();
 	};
 
-	bool operator == (const ExprType &typeA, const ExprType &typeB);
 
 	struct Iden {
 		IdenType type;
@@ -143,7 +157,8 @@ namespace IdenSystem {
 		std::vector< std::pair<std::string, Class *> > generic;
 		ExprTypePtr_Normal bsCls = nullptr;
 		bool isGeneric = false;
-		u64 size, dep;
+		u64 size = 0;
+		int dep = -1;
 		// the susbtitution map for inner class or local class
 		SubstiMap outSubst;
 		std::vector<ClsNode *> nodes;
@@ -183,16 +198,20 @@ namespace IdenSystem {
 
 	struct IdenEnvironment {
 	private:
-		Namespace *curNsp;
-		Class *curClass;
-		Function *curFunc;
+		Namespace *curNsp = nullptr, *gloNsp = nullptr;
+		Class *curClass = nullptr;
+		Function *curFunc = nullptr;
 		std::deque<IdenFrame> local;
 		size_t preLocalVarNum = 0;
+		
 	public:
+		void setGloNsp(Namespace *glo);
 		void chgFunc(Function *target);
 		void chgClass(Class *target);
 		void chgNsp(Namespace *target);
 		Namespace *getCurNsp();
+		Class *getCurCls();
+		Namespace *getGloNsp();
 		void localPush();
 		void localPop();
 		size_t getLocalVarNum();
@@ -201,11 +220,16 @@ namespace IdenSystem {
 		std::vector<Iden *> search(const std::vector<std::string> &path) const ;
 	};
 
+	// get the convertion of base class "object"
+	ExprTypePtr objExprType(IdenEnvironment *idenEnv);
+
+	ExprTypePtr cvtToExprType(IdenEnvironment *idenEnv, TypeNode *typeNode);
+
 	bool allSpecType(const std::vector<Iden *> idens, IdenType type);
 
 	Namespace *buildGloNsp();
 
-	bool build(Namespace *glo, const std::vector<CplNode *> roots);
+	IdenEnvironment *build(Namespace *glo, const std::vector<CplNode *> roots);
 
 	bool buildIdenFile(Namespace *glo);
 }

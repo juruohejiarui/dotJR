@@ -9,8 +9,44 @@ namespace IdenSystem {
         iden->fullName = std::format("{0}#{1}", parent->fullName, iden->name);
     }
 
-	ExprTypePtr getExprType(TypeNode *typeNode) {
-
+	ExprTypePtr cvtToExprType(IdenEnvironment *idenEnv, TypeNode *typeNode) {
+        if (typeNode->attr & TypeNode_Attr_isArr) {
+            ExprTypePtr_Array arrType = std::make_shared<ExprType_Array>();
+            arrType->dimc = typeNode->dimc;
+            arrType->eleType = cvtToExprType(idenEnv, typeNode->subType);
+            return arrType->eleType != nullptr ? arrType : nullptr;
+        } if (typeNode->attr & TypeNode_Attr_isRef) {
+            ExprTypePtr_Ref refType = std::make_shared<ExprType_Ref>();
+            refType->srcType = cvtToExprType(idenEnv, typeNode->subType);
+            return refType->srcType != nullptr ? refType : nullptr;
+        } else if (typeNode->attr & TypeNode_Attr_isPtr) {
+            ExprTypePtr_Ptr ptrType = std::make_shared<ExprType_Ptr>();
+            ptrType->srcType = cvtToExprType(idenEnv, typeNode->subType);
+            return ptrType->srcType != nullptr ? ptrType : nullptr;
+        } else if (typeNode->attr & TypeNode_Attr_isFunc) {
+            ExprTypePtr_FuncPtr funcPtrType = std::make_shared<ExprType_FuncPtr>();
+            funcPtrType->retType = cvtToExprType(idenEnv, typeNode->subType);
+            if (funcPtrType->retType == nullptr) return nullptr;
+            funcPtrType->paramType.resize(typeNode->params.size());
+            for (size_t i = 0; i < funcPtrType->paramType.size(); i++) {
+                if ((funcPtrType->paramType[i] = cvtToExprType(idenEnv, typeNode->params[i])) == nullptr)
+                    return nullptr;
+            }
+            return funcPtrType;
+        } else {
+            ExprTypePtr_Normal type = std::make_shared<ExprType_Normal>();
+            auto res = idenEnv->search(split(typeNode->token.strData, "#"));
+            if (res[0]->type != IdenType::Cls) return nullptr;
+            type->cls = (Class *)res[0];
+            if (typeNode->attr & TypeNode_Attr_hasGener) {
+                type->substList.resize(typeNode->params.size());
+                for (size_t i = 0; i < type->substList.size(); i++)
+                    if ((type->substList[i] = cvtToExprType(idenEnv, typeNode->params[i])) == nullptr)
+                        return nullptr;
+            }
+            return type;
+        }
+        return nullptr;
 	}
 	
 	Namespace *buildGloNsp() {
@@ -51,7 +87,9 @@ namespace IdenSystem {
 		return cur;
 	}
 
-	// return 
+	// create a class in the namespace BLG with identifier NAME
+    // When second element of the return val is true, it means this class is created, and the first element is the class structure pointer
+    // When is false, it means this clas has already been created and the first element is the structure created previously.
 	std::tuple<Class *, bool> createCls(Namespace *blg, const std::string &name) {
 		std::vector<Iden *> idens = blg->child.getChildren(name);
 		if (idens.size() == 0) {
@@ -64,38 +102,79 @@ namespace IdenSystem {
 		return std::make_tuple((Class *)idens[0], false);
 	}
 
-	bool analyClsNode(IdenEnvironment *idenEnv, ClsNode *clsNode) {
+	bool buildClsNode(IdenEnvironment *idenEnv, ClsNode *clsNode) {
 		auto createRes = createCls(idenEnv->getCurNsp(), clsNode->token.strData);
 		Class *cls = std::get<0>(createRes);
+        if (idenEnv->getCurCls() != nullptr) {
+            std::cout << std::format("line {0}: unsupported feature: inner class.\n", clsNode->token.lineId, clsNode->token.strData);
+            return false;
+        }
 		if (cls == nullptr) {
 			std::cout << std::format("line {0}: multiple definition of identifier {1}\n", clsNode->token.lineId, clsNode->token.strData);
 			return false;
-		}
-		IdenAccessType acc = clsNode->access;
-		if (std::get<1>(createRes)) cls->access = acc;
-		else {
-			if (cls->access != acc) {
-				std::cout << std::format("line {0}: conflict of access type of class {1}\n", clsNode->token.lineId, cls->fullName);
-				return false;
-			}
-		}
-		// get the basic class
-		ExprTypePtr bsType = clsNode->bsCls != nullptr ? getExprType(clsNode->bsCls;
-		if (std::get<1>(createRes)) cls->bsCls = bsType;
-		else 
+        }
+        cls->nodes.push_back(clsNode);
+
+        // set up access type
+        {
+            IdenAccessType acc = clsNode->access;
+    		if (std::get<1>(createRes)) cls->access = acc;
+    		else {
+    			if (cls->access != acc) {
+    				std::cout << std::format("line {0}: conflict of access type of class {1}\n", clsNode->token.lineId, cls->fullName);
+    				return false;
+    			}
+    		}
+        }
+        
+        // setup generic template list
+        {
+            if (std::get<1>(createRes)) {
+                if (clsNode->tmplList.size() != cls->generic.size()) goto Error_SetupGeneric;
+                for (int i = 0; i < clsNode->tmplList.size(); i++) {
+                    const std::string &tmplName = clsNode->tmplList[i]->token.strData;
+                    if (tmplName != cls->generic[i].first) goto Error_SetupGeneric;
+                }
+            } else {
+                cls->generic.resize(clsNode->tmplList.size());
+                for (int i = 0; i < clsNode->tmplList.size(); i++) {
+                    const std::string &tmplName = clsNode->tmplList[i]->token.strData;
+                    Class *generCls = new Class();
+                    generCls->isGeneric = true;
+                    generCls->parent = cls;
+                    generCls->name = tmplName;
+                    cls->generic[i] = std::make_pair(tmplName, generCls);
+                }
+            }
+            goto End_SetupGeneric;
+
+            Error_SetupGeneric:
+            std::cout << std::format("line {0}: conflict of generic class definition of class \"{1}\"\n", clsNode->token.lineId, cls->fullName);
+            return false;
+        }
+        End_SetupGeneric:
+        // do not analysis other part
+        return true;
 	}
 
-	void analyNspNode(IdenEnvironment *idenEnv, Namespace *glo, NspNode *nspNode) {
+	void scanCls(IdenEnvironment *idenEnv, Namespace *glo, NspNode *nspNode) {
 		auto path = split(nspNode->token.strData, "#");
 		Namespace *nsp = createNsp(glo, path);
+        nsp->nodes.push_back(nspNode);
+        
 	}
-	bool build(Namespace *glo, const std::vector<CplNode *> roots) {
+	IdenEnvironment *build(Namespace *glo, const std::vector<CplNode *> roots) {
+        IdenEnvironment *idenEnv = new IdenEnvironment;
+        idenEnv->setGloNsp(glo);
+        // build class nodes
 		for (CplNode *root : roots) {
 			if (root->type != CplNodeType::SrcRoot || root->type != CplNodeType::SymRoot)
 				continue;
 			BlkNode *blk = (BlkNode *)root;
 			
 		}
-		return true;
-	}
+        // build class trees
+        // build function and variables
+		return idenEnv;
+    }
 }

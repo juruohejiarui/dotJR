@@ -8,13 +8,6 @@ namespace IdenSystem {
 		return res;
 	}
 
-	bool operator==(const ExprType &typeA, const ExprType &typeB) {
-		if (typeA.category != typeB.category) return false;
-		switch (typeA.category) {
-			
-		}
-	}
-
 	bool Iden::isClsMember() { return parent->type == IdenType::Nsp; }
 
 	bool Iden::isGlobal() { return parent->type == IdenType::Cls; }
@@ -33,7 +26,48 @@ namespace IdenSystem {
 		return res;
 	}
 
-	ExprTypePtr ExprType_Normal::deepCopy() const {
+    bool ExprType::equal(const ExprTypePtr &a, const ExprTypePtr &b) {
+        if (a->category != b->category) return false;
+		switch (a->category) {
+			case ExprTypeCategory::FuncPtr : {
+				auto funcA = dynCastPtr<ExprType, ExprType_FuncPtr>(a),
+					funcB = dynCastPtr<ExprType, ExprType_FuncPtr>(b);
+				if (!equal(funcA->retType, funcB->retType) || funcA->paramType.size() != funcB->paramType.size()) return false;
+				for (size_t i = 0; i < funcA->paramType.size(); i++)
+					if (!equal(funcA->paramType[i], funcB->paramType[i])) return false;
+				break;
+			}
+			case ExprTypeCategory::Normal : {
+				auto typeA = dynCastPtr<ExprType, ExprType_Normal>(a),
+					typeB = dynCastPtr<ExprType, ExprType_Normal>(b);
+				if (typeA->cls != typeB->cls || typeA->substList.size() != typeB->substList.size()) return false;
+				for (size_t i = 0; i < typeA->substList.size(); i++)
+					if (!equal(typeA->substList[i], typeB->substList[i])) return false;
+				break;
+			}
+			case ExprTypeCategory::Array : {
+				auto typeA = dynCastPtr<ExprType, ExprType_Array>(a),
+					typeB = dynCastPtr<ExprType, ExprType_Array>(b);
+				if (typeA->dimc != typeB->dimc || !equal(typeA->eleType, typeB->eleType)) return false;
+				break;
+			}
+			case ExprTypeCategory::Ptr : {
+				auto ptrA = dynCastPtr<ExprType, ExprType_Ptr>(a),
+					ptrB = dynCastPtr<ExprType, ExprType_Ptr>(b);
+				if (!equal(ptrA->srcType, ptrB->srcType)) return false;
+				break;
+			}
+			case ExprTypeCategory::Ref : {
+				auto ptrA = dynCastPtr<ExprType, ExprType_Ptr>(a),
+					ptrB = dynCastPtr<ExprType, ExprType_Ptr>(b);
+				if (!equal(ptrA->srcType, ptrB->srcType)) return false;
+				break;
+			}
+		}
+		return true;
+    }
+
+    ExprTypePtr ExprType_Normal::deepCopy() const {
 		ExprTypePtr_Normal cpy = std::make_shared<ExprType_Normal>();
 		cpy->cls = cls;
 		cpy->referable = referable;
@@ -121,7 +155,37 @@ namespace IdenSystem {
 		cls = nullptr;
 	}
 
-	ExprTypePtr ExprType_Ptr::deepCopy() const {
+	ExprTypePtr ExprType_Array::deepCopy() const {
+        ExprTypePtr_Array res = std::make_shared<ExprType_Array>();
+		res->dimc = dimc;
+		res->referable = referable;
+		res->eleType = eleType->deepCopy();
+		return res;
+    }
+
+    IdenFitRate ExprType_Array::fit(ExprTypePtr type, SubstiMap &substMap) const {
+        if (type->category != ExprTypeCategory::Array) {
+			if (type->category == ExprTypeCategory::Ref && referable)
+				return toRef()->fit(type, substMap);
+			return IdenFitRate::NotFit;
+		}
+		auto arrType = dynCastPtr<ExprType, ExprType_Array>(type);
+		return arrType->dimc == dimc ? eleType->fit(arrType->eleType, substMap) : IdenFitRate::NotFit;
+    }
+
+    ExprTypePtr ExprType_Array::substitute(const SubstiMap &substMap) const {
+        ExprTypePtr_Array res = std::make_shared<ExprType_Array>();
+		res->dimc = dimc;
+		res->referable = referable;
+		res->eleType = eleType->substitute(substMap);
+		return res;
+    }
+
+    ExprType_Array::~ExprType_Array() { eleType = nullptr; }
+
+    ExprType_Array::ExprType_Array() { category = ExprTypeCategory::Array; }
+
+    ExprTypePtr ExprType_Ptr::deepCopy() const {
 	   ExprTypePtr_Ptr res = std::make_shared<ExprType_Ptr>();
 	   res->srcType = srcType->deepCopy();
 	   res->referable = referable;
@@ -319,13 +383,19 @@ namespace IdenSystem {
 		return std::make_tuple(rate, retType->substitute(substMap));
 	}
 
-	void IdenEnvironment::chgFunc(Function *target) { curFunc = target; }
+    void IdenEnvironment::setGloNsp(Namespace *glo) { gloNsp = glo; }
 
-	void IdenEnvironment::chgClass(Class *target) { curClass = target; }
+    void IdenEnvironment::chgFunc(Function *target) { curFunc = target; }
+
+    void IdenEnvironment::chgClass(Class *target) { curClass = target; }
 
 	void IdenEnvironment::chgNsp(Namespace *target) { curNsp = target; }
 
 	Namespace *IdenEnvironment::getCurNsp() { return curNsp; }
+
+    Class *IdenEnvironment::getCurCls() { return curClass; }
+
+    Namespace *IdenEnvironment::getGloNsp() { return gloNsp; }
 
 	void IdenEnvironment::localPush() {
 		if (local.size()) preLocalVarNum += (local.end() - 1)->var.size();
@@ -390,8 +460,15 @@ namespace IdenSystem {
 		return ret;
 	}
 
-	bool allSpecType(const std::vector<Iden *> idens, IdenType type) {
-		for (Iden *iden : idens) if (iden->type != type) return false;
+    ExprTypePtr objExprType(IdenEnvironment *idenEnv) {
+        ExprTypePtr_Normal exprType = std::make_shared<ExprType_Normal>();
+		exprType->cls = (Class *)idenEnv->getGloNsp()->child.getChildren("object")[0];
+		return exprType;
+    }
+
+    bool allSpecType(const std::vector<Iden *> idens, IdenType type) {
+        for (Iden *iden : idens) if (iden->type != type) return false;
 		return true;
-	}
+    }
+
 }
