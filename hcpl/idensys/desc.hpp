@@ -63,6 +63,8 @@ namespace IdenSystem {
 
 		// check whether two type expression is completely same
 		static bool equal(const ExprTypePtr &a, const ExprTypePtr &b);
+
+		virtual std::string toString(int dep = 0) = 0;
 	};
 
 	struct ExprType_Normal : ExprType {
@@ -75,6 +77,8 @@ namespace IdenSystem {
 		virtual ~ExprType_Normal();
 		ExprTypePtr_Normal toBsType() const;
 		ExprType_Normal();
+
+		virtual std::string toString(int dep = 0);
 	};
 
 	struct ExprType_Array : ExprType {
@@ -85,6 +89,8 @@ namespace IdenSystem {
 		virtual ExprTypePtr substitute(const SubstiMap &substMap) const;
 		virtual ~ExprType_Array();
 		ExprType_Array();
+
+		virtual std::string toString(int dep = 0);
 	};
 
 	struct ExprType_Ptr : ExprType {
@@ -94,6 +100,8 @@ namespace IdenSystem {
 		virtual ExprTypePtr substitute(const SubstiMap &substMap) const;
 		virtual ~ExprType_Ptr();
 		ExprType_Ptr();
+
+		virtual std::string toString(int dep = 0);
 	};
 
 	struct ExprType_FuncPtr : ExprType {
@@ -104,6 +112,8 @@ namespace IdenSystem {
 		virtual ExprTypePtr substitute(const SubstiMap &substMap) const;
 		virtual ~ExprType_FuncPtr();
 		ExprType_FuncPtr();
+
+		virtual std::string toString(int dep = 0);
 	};
 
 	struct ExprType_Ref : ExprType {
@@ -113,6 +123,8 @@ namespace IdenSystem {
 		virtual ExprTypePtr substitute(const SubstiMap &substMap) const;
 		virtual ~ExprType_Ref();
 		ExprType_Ref();
+
+		virtual std::string toString(int dep = 0);
 	};
 
 
@@ -122,11 +134,13 @@ namespace IdenSystem {
 
 		std::string name, fullName;
 		
-		Iden *parent;
+		Iden *parent = nullptr;
 
 		bool isClsMember();
 		bool isGlobal();
 		bool isLocal();
+
+		virtual std::string toString(int dep = 0) = 0;
 	};
 
 	struct IdenFrame {
@@ -144,12 +158,16 @@ namespace IdenSystem {
 		bool insertChild(Iden *iden);
 		std::vector<Iden *> getChildren(const std::string &name, IdenAccessType minAcc = IdenAccessType::Private, IdenAccessType maxAcc = IdenAccessType::Public) const;
 		~IdenFrame();
+
+		std::string toString(int dep);
 	};
 
 	struct Namespace : Iden {
 		IdenFrame child;
 		std::vector<NspNode *> nodes;
 		Namespace();
+
+		virtual std::string toString(int dep);
 	};
 
 	struct Class : Iden {
@@ -157,18 +175,18 @@ namespace IdenSystem {
 		std::vector< std::pair<std::string, Class *> > generic;
 		ExprTypePtr_Normal bsCls = nullptr;
 		bool isGeneric = false;
+		bool isBaseType = false;
 		u64 size = 0;
 		int dep = -1;
 		// the susbtitution map for inner class or local class
 		SubstiMap outSubst;
 		std::vector<ClsNode *> nodes;
+		Class();
+
+		virtual std::string toString(int dep);
 	};
 
 	struct Function : Iden {
-		// the function label name, the entry label of the assembly of this function
-		// if this function is global function, then lblname is the same as the full name
-		// if this function is member function or inner function, then lbl may different from the full name
-		std::string lblName;
 		// generic class list
 		std::vector< std::pair<std::string, Class *> > generic;
 		ExprTypePtr retType;
@@ -180,6 +198,14 @@ namespace IdenSystem {
 		std::tuple<IdenFitRate, ExprTypePtr> fit(const std::string &idenName, const std::vector<ExprTypePtr> &generParam, const std::vector<ExprTypePtr> &paramList) const;
 
 		std::vector<OperType> generOper;
+
+		// if this function is inherented from base type, then this attribute points to the definition of the original one
+		// otherwise, this points to itself.
+		Function *oriFunc = nullptr;
+
+		Function();
+
+		virtual std::string toString(int dep);
 	};
 
 	struct Variable : Iden {
@@ -189,11 +215,19 @@ namespace IdenSystem {
 		SubstiMap outSubst;
 
 		size_t offset;
+
+		Variable();
+
+		virtual std::string toString(int dep);
 	};
 
 	struct Enum : Iden {
 		std::map<std::string, Variable *> items;
 		EnumNode *node;
+
+		Enum();
+
+		virtual std::string toString(int dep);
 	};
 
 	struct IdenEnvironment {
@@ -206,9 +240,9 @@ namespace IdenSystem {
 		
 	public:
 		void setGloNsp(Namespace *glo);
-		void chgFunc(Function *target);
-		void chgClass(Class *target);
-		void chgNsp(Namespace *target);
+		void setCurFunc(Function *target);
+		void setCurCls(Class *target);
+		void setCurNsp(Namespace *target);
 		Namespace *getCurNsp();
 		Class *getCurCls();
 		Namespace *getGloNsp();
@@ -218,6 +252,8 @@ namespace IdenSystem {
 		IdenFrame &localTop();
 
 		std::vector<Iden *> search(const std::vector<std::string> &path) const ;
+
+		~IdenEnvironment();
 	};
 
 	// get the convertion of base class "object"
@@ -225,11 +261,11 @@ namespace IdenSystem {
 
 	ExprTypePtr cvtToExprType(IdenEnvironment *idenEnv, TypeNode *typeNode);
 
-	bool allSpecType(const std::vector<Iden *> idens, IdenType type);
+	bool allSpecType(const std::vector<Iden *> &idens, IdenType type);
 
 	Namespace *buildGloNsp();
 
-	IdenEnvironment *build(Namespace *glo, const std::vector<CplNode *> roots);
+	IdenEnvironment *build(Namespace *glo, const std::vector<CplNode *> &roots);
 
 	bool buildIdenFile(Namespace *glo);
 }

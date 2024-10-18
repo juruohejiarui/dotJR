@@ -600,7 +600,7 @@ static __inline__ int parseCls(const std::vector<Hcpl_Token> &tokens, size_t fr,
 		to = fr;
 		while (!isSpecBrk(tokens[to], BrkType::LargeL)) to++;
 		res |= parseType(tokens, fr + 1, to - 1, node->bsCls);
-		if (node->bsCls->attr) {
+		if (node->bsCls->attr & (~TypeNode_Attr_hasGener)) {
 			printf("line %d: invalid base class", tokens[fr].lineId);
 			res |= Res_Error;
 		}
@@ -655,6 +655,11 @@ static __inline__ int parseNsp(const std::vector<Hcpl_Token> &tokens, size_t fr,
 					case CplNodeType::VarDefBlock	 : node->var.push_back((VarDefNode *)child); break;
 					case CplNodeType::EnumDef		 : node->enm.push_back((EnumNode *)child); break;
 					case CplNodeType::ClsDef		 : node->cls.push_back((ClsNode *)child); break;
+					case CplNodeType::Using			 : node->usng.push_back((UsingNode *)child); break;
+					default : {
+						printf("line %d: invalid token \"%s\"\n", tokens[l].lineId, tokens[l].strData.c_str());
+						break;
+					}
 				}
 				break;
 			case Hcpl_TokenType::ExprEnd :
@@ -770,30 +775,41 @@ static int parse(const std::vector<Hcpl_Token> &tokens, size_t fr, size_t &to, C
 }
 
 int Hcpl_makeCplTree(const std::vector<Hcpl_Token> &tokens, CplNodeType rootType, CplNode *&root) {
-    root = new BlkNode(); 
-	BlkNode *node = new BlkNode(); root = node; node->type = CplNodeType::SrcRoot;
+	NspNode *node = new NspNode(); root = node; node->type = CplNodeType::SrcRoot;
 	CplNode *child;
 	int res = 0;
-	for (size_t fr = 0, to = 0; fr < tokens.size(); fr = ++to) {
-		switch (tokens[fr].type) {
+	for (size_t l = 0, r = l; r < tokens.size(); l = ++r) {
+		CplNode *child = nullptr;
+		switch (tokens[l].type) {
 			case Hcpl_TokenType::Keyword :
-				res |= parseKeyword(tokens, fr, to, child, root);
-				node->child.push_back(child);
+				res |= parseKeyword(tokens, l, r, child, root);
+				if (res & Res_SeriousError || child == nullptr) break;
+				switch (child->type) {
+					case CplNodeType::FuncDef		 : node->func.push_back((FuncNode *)child); break;
+					case CplNodeType::VarDefBlock	 : node->var.push_back((VarDefNode *)child); break;
+					case CplNodeType::EnumDef		 : node->enm.push_back((EnumNode *)child); break;
+					case CplNodeType::ClsDef		 : node->cls.push_back((ClsNode *)child); break;
+					case CplNodeType::Using			 : node->usng.push_back((UsingNode *)child); break;
+					case CplNodeType::NspDef 	 	 : node->nsp.push_back((NspNode *)child); break; 
+					default : {
+						printf("line %d: invalid token \"%s\"\n", tokens[l].lineId, tokens[l].strData.c_str());
+						break;
+					}
+				}
 				break;
 			case Hcpl_TokenType::ExprEnd :
 				continue;
 			default :
-				printf("line %d: invalid token \"%s\"\n", tokens[fr].lineId, tokens[fr].strData.c_str());
+				printf("line %d: invalid token \"%s\"\n", tokens[l].lineId, tokens[l].strData.c_str());
 				res |= Res_SeriousError;
 				break;
 		}
-		if (res & Res_SeriousError) break;
+		if (res & Res_SeriousError) return Res_SeriousError;
 	}
 	return res;
 }
 
 #pragma region toString()
-static std::string getIndent(int dep) { std::string str = ""; for (int i = 0; i < dep; i++) str.append("    "); return str; }
 
 std::string IdenAccessType_toString(IdenAccessType val) {
     switch (val) {
@@ -924,8 +940,7 @@ std::string VarDefNode::toString(int dep) {
 }
 
 std::string UsingNode::toString(int dep) {
-    std::string res = CplNode::toString(dep) + " ";
-	for (int i = 0; i < path.size(); i++) res.append("::" + path[i]);
+    std::string res = CplNode::toString(dep) + " " + token.strData;
 	return res;
 }
 

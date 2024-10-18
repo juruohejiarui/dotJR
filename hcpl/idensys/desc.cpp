@@ -1,5 +1,6 @@
 #include "desc.hpp"
 #include <type_traits>
+#include <format>
 
 namespace IdenSystem {
 	SubstiMap substitute(const SubstiMap &x, const SubstiMap &y) {
@@ -155,6 +156,15 @@ namespace IdenSystem {
 		cls = nullptr;
 	}
 
+	std::string ExprType_Normal::toString(int dep) {
+		std::string res = std::format("{0}cls: fullName:{1},{2} referable\n", getIndent(dep), cls->fullName, referable ? "is" : "not");
+		if (substList.size() > 0) {
+			res.append(getIndent(dep) + "substitution:\n");
+			for (int i = 0; i < substList.size(); i++) res.append(substList[i]->toString(dep + 1));
+		}
+		return res;
+	}
+
 	ExprTypePtr ExprType_Array::deepCopy() const {
         ExprTypePtr_Array res = std::make_shared<ExprType_Array>();
 		res->dimc = dimc;
@@ -185,7 +195,13 @@ namespace IdenSystem {
 
     ExprType_Array::ExprType_Array() { category = ExprTypeCategory::Array; }
 
-    ExprTypePtr ExprType_Ptr::deepCopy() const {
+	std::string ExprType_Array::toString(int dep) {
+		std::string res = std::format("{0}{1}-D {2} array of\n", getIndent(dep), std::to_string(dimc), referable ? "referable" : "not referable");
+		res.append(eleType->toString(dep + 1));
+		return res;
+	}
+
+	ExprTypePtr ExprType_Ptr::deepCopy() const {
 	   ExprTypePtr_Ptr res = std::make_shared<ExprType_Ptr>();
 	   res->srcType = srcType->deepCopy();
 	   res->referable = referable;
@@ -214,6 +230,12 @@ namespace IdenSystem {
 	ExprType_Ptr::ExprType_Ptr() {
 		category = ExprTypeCategory::Ptr;
 		srcType = nullptr;
+	}
+
+	std::string ExprType_Ptr::toString(int dep) {
+		std::string res = std::format("{0} {1} pointer of\n", getIndent(dep), referable ? "referable" : "not referable");
+		res.append(srcType->toString(dep + 1));
+		return res;
 	}
 
 	ExprTypePtr ExprType_FuncPtr::deepCopy() const {
@@ -262,6 +284,15 @@ namespace IdenSystem {
 		retType = nullptr;
 	}
 
+	std::string ExprType_FuncPtr::toString(int dep) {
+		std::string res = std::format("{0} {1} function pointer of\n", getIndent(dep), referable ? "referable" : "not referable");
+		res.append(retType->toString(dep + 1));
+		res.append(getIndent(dep) + "parameters:\n");
+		for (int i = 0; i < paramType.size(); i++)
+			res.append(paramType[i]->toString(dep + 1));
+		return res;
+	}
+
 	ExprTypePtr ExprType_Ref::deepCopy() const {
 		ExprTypePtr_Ref res = std::make_shared<ExprType_Ref>();
 		res->srcType = srcType->deepCopy();
@@ -286,6 +317,12 @@ namespace IdenSystem {
 
 	ExprType_Ref::ExprType_Ref() {
 		category = ExprTypeCategory::Ptr;
+	}
+
+	std::string ExprType_Ref::toString(int dep) {
+		std::string res = std::format("{0}reference of\n", getIndent(dep));
+		res.append(srcType->toString(dep + 1));
+		return res;
 	}
 
 	bool IdenFrame::insertChild(Iden *iden) {
@@ -335,11 +372,11 @@ namespace IdenSystem {
 			auto iter = (mapName).find(name); \
 			if (iter != (mapName).end() && inRange(iter->second->access, minAcc, maxAcc)) res.push_back(iter->second); \
 		} while (0)
-
 		chkMap(nsp);
 		chkMap(cls);
 		chkMap(enm);
 		chkMap(var);
+		#undef chkMap
 		{
 			auto iter = funcList.find(name);
 			if (iter != funcList.end()) {
@@ -348,7 +385,6 @@ namespace IdenSystem {
 			}
 		}
 	 
-		#undef chkMap
 		return res;
 	}
 
@@ -361,7 +397,26 @@ namespace IdenSystem {
 		for (auto &ePir : enm) delete ePir.second;
 	}
 
+	std::string IdenFrame::toString(int dep) {
+		std::string res;
+		for (auto cPir : cls) res.append(cPir.second->toString(dep));
+		for (auto nPir : nsp) res.append(nPir.second->toString(dep));
+		for (auto &fPir : funcList)
+			for (auto &func : fPir.second)
+				res.append(func->toString(dep));
+		for (auto vPir : var) res.append(vPir.second->toString(dep));
+		for (auto ePir : enm) res.append(ePir.second->toString(dep));
+		for (auto usg : usgList) res.append(std::format("{0}using {1}\n", getIndent(dep), usg->fullName));
+		return res;
+	}
+
 	Namespace::Namespace() { type = IdenType::Nsp; }
+
+	std::string Namespace::toString(int dep) {
+		std::string res = std::format("{0}Namesapce {1}->{2}:\n", getIndent(dep), name, fullName);
+		res.append(child.toString(dep + 1));
+		return res;
+	}
 
 	std::tuple<IdenFitRate, ExprTypePtr> Function::fit(const std::string &idenName, const std::vector<ExprTypePtr> &generParam, const std::vector<ExprTypePtr> &paramList) const {
 		if (idenName != name) return std::make_tuple(IdenFitRate::NotFit, nullptr);
@@ -383,13 +438,13 @@ namespace IdenSystem {
 		return std::make_tuple(rate, retType->substitute(substMap));
 	}
 
-    void IdenEnvironment::setGloNsp(Namespace *glo) { gloNsp = glo; }
+	void IdenEnvironment::setGloNsp(Namespace *glo) { gloNsp = glo; }
 
-    void IdenEnvironment::chgFunc(Function *target) { curFunc = target; }
+    void IdenEnvironment::setCurFunc(Function *target) { curFunc = target; }
 
-    void IdenEnvironment::chgClass(Class *target) { curClass = target; }
+    void IdenEnvironment::setCurCls(Class *target) { curClass = target; }
 
-	void IdenEnvironment::chgNsp(Namespace *target) { curNsp = target; }
+	void IdenEnvironment::setCurNsp(Namespace *target) { curNsp = target; }
 
 	Namespace *IdenEnvironment::getCurNsp() { return curNsp; }
 
@@ -416,7 +471,7 @@ namespace IdenSystem {
 
 	std::vector<Iden *> IdenEnvironment::search(const std::vector<std::string> &path) const {
 		std::vector<Iden *> ret;
-		auto append = [&](std::vector<Iden *> ret, const std::vector<Iden *> list) {
+		auto append = [&](std::vector<Iden *> &ret, const std::vector<Iden *> list) {
 			for (Iden *iden : list) ret.push_back(iden);
 		};
 		// just search the identifier with access type that larger or equal to MIN_ACC
@@ -435,15 +490,26 @@ namespace IdenSystem {
 			for (Namespace *nsp : usgList) append(ret, search(nsp, IdenAccessType::Public));
 			return ret;
 		};
-		if (path.size() == 0) {
+		if (path.size() == 1) {
 			// search local items
 			for (int i = local.size() - 1; i >= 0; i--)
 				append(ret, local[i].getChildren(path[0]));
+			if (curFunc != nullptr)
+				for (auto &gener : curFunc->generic)
+					if (gener.first == path[0]) ret.push_back(gener.second);
 			// search class members
-			if (curClass != nullptr) append(ret, curClass->child.getChildren(path[0]));
-			// search from parent namespace
-			for (Namespace *nsp = curNsp; nsp != nullptr; nsp = (Namespace *)nsp->parent)
-				append(ret, nsp->child.getChildren(path[0], IdenAccessType::Protected, IdenAccessType::Protected));
+			if (curClass != nullptr) {
+				append(ret, curClass->child.getChildren(path[0]));
+				for (auto &gener : curClass->generic)
+					if (gener.first == path[0]) ret.push_back(gener.second);
+			}
+			if (curNsp != nullptr) {
+				append(ret, curNsp->child.getChildren(path[0], IdenAccessType::Protected, IdenAccessType::Public));
+				// search from parent namespace
+				for (Namespace *nsp = (Namespace *)curNsp->parent; nsp != nullptr; nsp = (Namespace *)nsp->parent)
+					append(ret, nsp->child.getChildren(path[0], IdenAccessType::Protected, IdenAccessType::Protected));
+			}
+			
 		}
 		// search usage list of local environment
 		for (int i = local.size() - 1; i >= 0; i--)
@@ -456,19 +522,67 @@ namespace IdenSystem {
 		// search usage list of this namespace and the parent namespace
 		for (Namespace *nsp = curNsp; nsp != nullptr; nsp = (Namespace *)nsp->parent)
 			append(ret, searchUsg(nsp->child.usgList));
-		
+		// search from global namespace
+		append(ret, search(gloNsp, IdenAccessType::Public));
 		return ret;
 	}
 
-    ExprTypePtr objExprType(IdenEnvironment *idenEnv) {
+	IdenEnvironment::~IdenEnvironment() {
+		delete gloNsp;
+	}
+
+	ExprTypePtr objExprType(IdenEnvironment *idenEnv) {
         ExprTypePtr_Normal exprType = std::make_shared<ExprType_Normal>();
 		exprType->cls = (Class *)idenEnv->getGloNsp()->child.getChildren("object")[0];
 		return exprType;
     }
 
-    bool allSpecType(const std::vector<Iden *> idens, IdenType type) {
+    bool allSpecType(const std::vector<Iden *> &idens, IdenType type) {
         for (Iden *iden : idens) if (iden->type != type) return false;
 		return true;
     }
 
+	Class::Class() { type = IdenType::Cls; }
+
+	std::string Class::toString(int dep) {
+		std::string res = std::format("{0}Class {1}->{2} access:{3}\n", getIndent(dep), name, fullName, IdenAccessType_toString(access));
+		for (auto &gener : generic)
+			res.append(std::format("{0}generic {1}\n", getIndent(dep + 1), gener.first));
+		if (bsCls != nullptr)
+			res.append(std::format("{0}bsCls:\n{1}", getIndent(dep + 1), bsCls->toString(dep + 1)));
+
+		res.append(child.toString(dep + 1));
+		return res;
+	}
+
+	Function::Function() { type = IdenType::Func; }
+
+	std::string Function::toString(int dep) {
+		std::string res = std::format("{0}Function {1}->{2} access:{3}\n", getIndent(dep), name, fullName, IdenAccessType_toString(access));
+		for (auto &gener : generic)
+			res.append(std::format("{0}generic {1}\n", getIndent(dep + 1), gener.first));
+		res.append(retType->toString(dep + 1));
+		res.append(std::format("{0}params:\n", getIndent(dep + 1)));
+		for (auto &param : params)
+			res.append(param->toString(dep + 1));
+		return res;
+	}
+
+	Variable::Variable() { type = IdenType::Var; }
+
+	std::string Variable::toString(int dep) {
+		std::string res = std::format("{0}Variable {1}->{2} access:{3}\n", getIndent(dep), name, fullName, IdenAccessType_toString(access));
+		res.append(varType->toString(dep + 1));
+		return res;
+	}
+
+	Enum::Enum() { type = IdenType::Enum; }
+
+	std::string Enum::toString(int dep)
+	{
+		std::string res = std::format("{0}Enum {1}->{2} access:{3}\n", getIndent(dep), name, fullName, IdenAccessType_toString(access));
+		for (auto &item : items)
+			res.append(std::format("{0}{1}\n", getIndent(dep + 1), item.first));
+		return res;
+	}
 }

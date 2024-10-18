@@ -67,13 +67,57 @@ namespace Base {
 			}
 			return 0;
 		}
-		public func @idx(idx : int) : T& { return data[idx]; }
+		public func @item(idx : int) : T& { return data[idx]; }
 		public func raw() : T[] { return deepCopy(data); }
 		public func rawRef() : T[]& { return data; }
 	}
+
+	public class Stack<$T$> : Array<$T$> {
+		
+	}
+
+	public class String : Array<$char$> {
+
+	}
+
+	public class Map<$KeyT, ValT$> {
+		public func @item(idx : KeyT) : ValT& { }
+	}
+
+	public class Set<$T$> {
+		public func insert(ele : T) : int { }
+		public func erase(ele : T) : int { }
+		public func count(ele : T) : int { }
+	}
+}
+
+namespace GUI {
+	class Element {
+
+	}
+	class Button : Element {
+
+	}
+	class Label : Element {
+
+	}
+	class ImageButton : Button {
+
+	}
+	class ElementList : Base#Array<$Element$> {
+
+	}
+}
+
+class test1 {
+	
 }
 
 public func Main(argc : int, argv : String[]) : int {
 	for (var i = 0; i < argc; i++) print(argv);
+	var C = $int[1000][1000];
+	for (var i = 0; i < 1000; i++) C[i][0] = 1;
+	for (var i = 1; i < 1000; i++)
+		for (var j = 1; j <= i; j++) C[i][j] = C[i - 1][j - 1] + C[i - 1][j];
 	return 0;
 }

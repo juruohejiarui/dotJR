@@ -11,7 +11,7 @@ enum class CplNodeType {
 };
 
 enum class IdenAccessType {
-	Public, Protected, Private
+	Private, Protected, Public
 };
 
 std::string IdenAccessType_toString(IdenAccessType val);
@@ -100,7 +100,6 @@ struct VarDefNode : CplNode {
 };
 
 struct UsingNode : CplNode {
-	std::vector<std::string> path;
 	virtual std::string toString(int dep = 0);
 };
 
@@ -142,6 +141,7 @@ struct NspNode : CplNode {
 	std::vector<ClsNode *> cls;
 	std::vector<FuncNode *> func;
 	std::vector<VarDefNode *> var;
+	std::vector<NspNode *> nsp;
 	virtual std::string toString(int dep = 0);
 };
 

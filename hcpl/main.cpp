@@ -3,6 +3,9 @@
 #include "idensys/desc.hpp"
 #include <fstream>
 #include <iostream>
+
+using namespace IdenSystem;
+
 int main(int argc, char **argv) {
 	fflush(stdout);
 	// in test mode
@@ -17,8 +20,10 @@ int main(int argc, char **argv) {
 		CplNode *root;
 		int res = Hcpl_makeCplTree(tokens, CplNodeType::SrcRoot, root);
 		printf("res=%d\n", res);
-		std::cout << root->toString();
-		IdenSystem::ExprTypePtr_Normal ptr = std::make_shared<IdenSystem::ExprType_Normal>();
+		// std::cout << root->toString();
+		Namespace *glo = IdenSystem::buildGloNsp();
+		IdenEnvironment *idenEnv = IdenSystem::build(glo, {root});
+		std::cout << (idenEnv != nullptr ? "success\n" : "fail\n") << glo->toString(0);
 		return 0;
 	}
 	return 0;

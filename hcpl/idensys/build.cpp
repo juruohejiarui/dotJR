@@ -36,13 +36,20 @@ namespace IdenSystem {
         } else {
             ExprTypePtr_Normal type = std::make_shared<ExprType_Normal>();
             auto res = idenEnv->search(split(typeNode->token.strData, "#"));
-            if (res[0]->type != IdenType::Cls) return nullptr;
+            if (res.size() < 1 || res[0]->type != IdenType::Cls) {
+                std::cout << std::format("line {0}: Cannot find class {1}\n", typeNode->token.lineId, typeNode->token.strData);
+                return nullptr;
+            }
             type->cls = (Class *)res[0];
             if (typeNode->attr & TypeNode_Attr_hasGener) {
                 type->substList.resize(typeNode->params.size());
                 for (size_t i = 0; i < type->substList.size(); i++)
                     if ((type->substList[i] = cvtToExprType(idenEnv, typeNode->params[i])) == nullptr)
                         return nullptr;
+            }
+            if (type->cls->generic.size() != type->substList.size()) {
+                std::cout << std::format("line {0}: Invalid number of substitutions for class {1}.\n", typeNode->token.lineId, type->cls->fullName);
+                return nullptr;
             }
             return type;
         }
@@ -64,6 +71,7 @@ namespace IdenSystem {
             cls->name = clsDesc.first;
             cls->dep = 1;
             cls->access = IdenAccessType::Public;
+            cls->isBaseType = true;
             setParent(cls, glo);
             glo->child.insertChild(cls);
         }
@@ -72,6 +80,7 @@ namespace IdenSystem {
 
 	// create a namespace list using PATH, return nullptr if one identifier of the path is used by other types
 	Namespace *createNsp(Namespace *glo, const std::vector<std::string> &path) {
+        if (path.size() == 0) return glo;
 		Namespace *cur = glo;
 		for (int i = 0; i < path.size(); i++) {
 			std::vector<Iden *> idens = cur->child.getChildren(path[i]);
@@ -80,9 +89,12 @@ namespace IdenSystem {
 				nsp->name = path[i], setParent(nsp, cur);
 				cur->child.insertChild(nsp);
 				nsp->access = IdenAccessType::Public;
+                cur = nsp;
 			// it is used by other types of identifiers
-			} else if (idens.size() > 1 || !allSpecType(idens, IdenType::Nsp)) return nullptr;
-			cur = (Namespace *)idens[0];
+			} else {
+                if (idens.size() > 1 || !allSpecType(idens, IdenType::Nsp)) return nullptr;
+			    cur = (Namespace *)idens[0];
+            }
 		}
 		return cur;
 	}
@@ -129,7 +141,7 @@ namespace IdenSystem {
         
         // setup generic template list
         {
-            if (std::get<1>(createRes)) {
+            if (!std::get<1>(createRes)) {
                 if (clsNode->tmplList.size() != cls->generic.size()) goto Error_SetupGeneric;
                 for (int i = 0; i < clsNode->tmplList.size(); i++) {
                     const std::string &tmplName = clsNode->tmplList[i]->token.strData;
@@ -141,8 +153,8 @@ namespace IdenSystem {
                     const std::string &tmplName = clsNode->tmplList[i]->token.strData;
                     Class *generCls = new Class();
                     generCls->isGeneric = true;
-                    generCls->parent = cls;
                     generCls->name = tmplName;
+                    setParent(generCls, cls);
                     cls->generic[i] = std::make_pair(tmplName, generCls);
                 }
             }
@@ -157,24 +169,126 @@ namespace IdenSystem {
         return true;
 	}
 
-	void scanCls(IdenEnvironment *idenEnv, Namespace *glo, NspNode *nspNode) {
+    
+
+	bool scanCls(IdenEnvironment *idenEnv, NspNode *nspNode) {
 		auto path = split(nspNode->token.strData, "#");
-		Namespace *nsp = createNsp(glo, path);
+		Namespace *nsp = createNsp(idenEnv->getGloNsp(), path), *prev = idenEnv->getCurNsp();
+        if (nsp == nullptr) {
+            std::cout << std::format("line {0}: Failed to create namespace {1}, becaus of multiple definition of this identifier.\n",
+                nspNode->token.lineId, nspNode->token.strData);
+            return false;
+        }
         nsp->nodes.push_back(nspNode);
-        
+        bool res = true;
+
+        idenEnv->setCurNsp(nsp);
+
+        for (ClsNode *clsNode : nspNode->cls)
+            res &= buildClsNode(idenEnv, clsNode);
+
+        idenEnv->setCurNsp(prev);
+
+        return res;
 	}
-	IdenEnvironment *build(Namespace *glo, const std::vector<CplNode *> roots) {
+
+    bool scanUsg(Namespace *glo, Namespace *nsp) {
+        auto res = true;
+        
+        for (NspNode *node : nsp->nodes) {
+            for (UsingNode *usg : node->usng) {
+                auto path = split(usg->token.strData, "#");
+                Namespace *cur = glo;
+                for (auto &part : path) {
+                    auto searchRes = cur->child.getChildren(part);
+                    if (searchRes.size() != 1 || !allSpecType(searchRes, IdenType::Nsp)) {
+                        std::cout << std::format("line {0}: failed to build shortcut {1}\n", usg->token.lineId, usg->token.strData);
+                        res = false;
+                        cur = nullptr;
+                        break;
+                    }
+                    cur = (Namespace *)searchRes[0];
+                }
+                if (cur != nullptr) nsp->child.usgList.push_back(cur);
+            }
+        }
+        for (auto childPair : nsp->child.nsp)
+            res &= scanUsg(glo, childPair.second);
+        return res;
+    }
+
+    bool buildClsGraph(IdenEnvironment *idenEnv, Namespace *cur, std::map<Class *, std::vector<Class *> > &graph) {
+        idenEnv->setCurNsp(cur);
+        bool res = true;
+        for (auto &clsPir : cur->child.cls) {
+            Class *cls = clsPir.second;
+            if (cls->isBaseType) continue;
+            idenEnv->setCurCls(cls);
+            // get the first definition node to parse the base class expression
+            for (ClsNode *node : cls->nodes) {
+                ExprTypePtr_Normal chkTemp = std::make_shared<ExprType_Normal>();
+                auto &tg = (cls->bsCls == nullptr ? cls->bsCls : chkTemp);
+                auto succ = true;
+                if (node->bsCls == nullptr) {
+                    ExprTypePtr_Normal objType = std::make_shared<ExprType_Normal>();
+                    objType->cls = idenEnv->getGloNsp()->child.cls["object"];
+                    cls->bsCls = objType;
+                } else {
+                    ExprTypePtr bsType_tmp = cvtToExprType(idenEnv, cls->nodes[0]->bsCls);
+                    if (bsType_tmp->category != ExprTypeCategory::Normal) {
+                        printf("line {0}: base class type must be normal type\n", cls->nodes[0]->bsCls->token.lineId);
+                        succ = false;
+                        break;
+                    }
+                    tg = dynCastPtr<ExprType, ExprType_Normal>(bsType_tmp);
+                }
+                if (succ) {
+                    if (cls->bsCls != nullptr) succ &= ExprType::equal(cls->bsCls, chkTemp);
+                } else res = false;
+            }
+            graph[cls->bsCls->cls].push_back(cls);
+        }
+        for (auto &nspPir : cur->child.nsp) {
+            Namespace *nsp = nspPir.second;
+            res &= buildClsGraph(idenEnv, nsp, graph);
+        }
+        return res;
+    }
+
+    bool analyClsGraph(IdenEnvironment *idenEnv, Class *cls) {
+        idenEnv->setCurCls(cls);
+        idenEnv->setCurNsp((Namespace *)cls->parent);
+        for (ClsNode *clsNode : cls->nodes) {
+        }
+        return true;
+    }
+
+	IdenEnvironment *build(Namespace *glo, const std::vector<CplNode *> &roots) {
         IdenEnvironment *idenEnv = new IdenEnvironment;
         idenEnv->setGloNsp(glo);
+        idenEnv->setCurNsp(glo);
+
+        bool res = true;
         // build class nodes
 		for (CplNode *root : roots) {
-			if (root->type != CplNodeType::SrcRoot || root->type != CplNodeType::SymRoot)
-				continue;
-			BlkNode *blk = (BlkNode *)root;
-			
-		}
-        // build class trees
-        // build function and variables
+            NspNode *nspNode = (NspNode *)root;
+			res &= scanCls(idenEnv, nspNode);
+            for (auto &nsp : nspNode->nsp) res &= scanCls(idenEnv, nsp);
+        }
+        if (!res) {
+            delete idenEnv;
+            return nullptr;
+        }
+
+        // build using list and class tree
+        res = scanUsg(idenEnv->getGloNsp(), idenEnv->getGloNsp());
+        if (!res) { delete idenEnv; return nullptr; }
+        std::map<Class *, std::vector<Class *> > graph;
+        res = buildClsGraph(idenEnv, idenEnv->getGloNsp(), graph);
+        if (!res) { delete idenEnv; return nullptr; }
+        // build member function and variables
+        res = analyClsGraph(idenEnv, idenEnv->getGloNsp()->child.cls["object"]);
+        // build global function and variables
 		return idenEnv;
     }
 }

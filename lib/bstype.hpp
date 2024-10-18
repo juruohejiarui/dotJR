@@ -22,3 +22,5 @@ dynCastPtr(std::shared_ptr<base> ptr) {
 template<typename T> bool inRange(const T &val, const T &rgL, const T &rgR) { return rgL <= val && val <= rgR; }
 
 std::vector<std::string> split(const std::string &str, const std::string &sep);
+
+std::string getIndent(int dep);

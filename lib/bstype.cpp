@@ -47,9 +47,11 @@ std::vector<std::string> split(const std::string &str, const std::string &sep) {
 		while (j && (j == sep.size() || str[i - 1] != str[j])) j = fil[j];
 		if (str[i - 1] == sep[j]) j++;
 		if (j == sep.size() && i - lst + 1 >= sep.size())
-			res.push_back(str.substr(lst, i - lst + 1 - sep.size())),
-			lst = i;
+			res.push_back(str.substr(lst - 1, i - lst + 1 - sep.size())),
+			lst = i + 1;
 	}
-	if (lst < str.size()) res.push_back(str.substr(lst));
+	if (lst <= str.size()) res.push_back(str.substr(lst - 1));
 	return res;
 }
+
+std::string getIndent(int dep) { std::string str = ""; for (int i = 0; i < dep; i++) str.append("  "); return str; }
