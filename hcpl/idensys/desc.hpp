@@ -215,6 +215,8 @@ namespace IdenSystem {
 		SubstiMap outSubst;
 
 		size_t offset;
+		
+		Variable *oriVar = nullptr;
 
 		Variable();
 

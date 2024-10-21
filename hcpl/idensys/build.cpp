@@ -260,7 +260,16 @@ namespace IdenSystem {
         idenEnv->setCurNsp((Namespace *)cls->parent);
         for (ClsNode *clsNode : cls->nodes) {
             for (VarDefNode *varDefBlk : clsNode->var) {
-                
+                IdenAccessType access = varDefBlk->access;
+                for (VarNode *varDef : varDefBlk->vars) {
+                    const std::string &name = varDef->token.strData;
+                    {
+                        auto searchRes = cls->child.getChildren(name);
+                        if (searchRes.size() > 0) {
+                                
+                        }
+                    }
+                }
             }
         }
         return true;
