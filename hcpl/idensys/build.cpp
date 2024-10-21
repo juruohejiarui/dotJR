@@ -259,6 +259,9 @@ namespace IdenSystem {
         idenEnv->setCurCls(cls);
         idenEnv->setCurNsp((Namespace *)cls->parent);
         for (ClsNode *clsNode : cls->nodes) {
+            for (VarDefNode *varDefBlk : clsNode->var) {
+                
+            }
         }
         return true;
     }

@@ -1,6 +1,6 @@
 /build/
-/TestEnv/*.hobj
-/TestEnv/*.hexe
-/TestEnv/*.hlib
+/TestEnv/*.jrobj
+/TestEnv/*.jrexe
+/TestEnv/*.jrlib
 /TestEnv/*.output
 .vscode/c_cpp_properties.json

@@ -940,7 +940,7 @@ std::string VarDefNode::toString(int dep) {
 }
 
 std::string UsingNode::toString(int dep) {
-    std::string res = CplNode::toString(dep) + " " + token.strData;
+    std::string res = CplNode::toString(dep) + getIndent(dep) + token.strData + "\n";
 	return res;
 }
 
@@ -968,6 +968,7 @@ std::string ClsNode::toString(int dep) {
 std::string NspNode::toString(int dep) {
 	std::string res = std::format("{0}Nsp {1} access:{2}\n", getIndent(dep), token.strData, IdenAccessType_toString(access));
     for (UsingNode *node : usng) res.append(node->toString(dep + 1));
+	for (NspNode *node : nsp) res.append(node->toString(dep + 1));
 	for (ClsNode *node : cls) res.append(node->toString(dep + 1));
 	for (FuncNode *node : func) res.append(node->toString(dep + 1));
 	for (EnumNode *node : enm) res.append(node->toString(dep + 1));

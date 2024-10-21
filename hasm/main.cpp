@@ -6,7 +6,7 @@
 
 int main(int argc, char **argv) {
 	if (argc == 1) {
-		std::ifstream ifs("./test1.hasm");
+		std::ifstream ifs("./test1.jras");
 		std::string str, line;
 		while (!ifs.eof()) std::getline(ifs, line), str.append(line), str.push_back('\n');
 		ifs.close();
@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
 		Hasm_writeCplPkg("test1.hobj", pkg);
 		delete pkg;
 
-		ifs = std::ifstream("./test2.hasm");
+		ifs = std::ifstream("./test2.jras");
 		str.clear();
 		while (!ifs.eof()) std::getline(ifs, line), str.append(line), str.push_back('\n');
 		ifs.close();
@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
 		Hasm_writeCplPkg("test2.hobj", pkg);
 		delete pkg;
 
-		int res = Hasm_link("test1.hexe", {"test1.hobj", "test2.hobj"}, {});
+		int res = Hasm_link("test1.jrexe", {"test1.jrobj", "test2.jrobj"}, {});
 		return 0;
 	}
 	
