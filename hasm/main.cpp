@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
 		std::vector<Hasm_Token> tokens;
 		Hasm_tokenize(str, tokens);
 		CompilePackage *pkg = Hasm_compile(tokens);
-		Hasm_writeCplPkg("test1.hobj", pkg);
+		Hasm_writeCplPkg("test1.jrobj", pkg);
 		delete pkg;
 
 		ifs = std::ifstream("./test2.jras");
@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
 		ifs.close();
 		Hasm_tokenize(str, tokens);
 		pkg = Hasm_compile(tokens);
-		Hasm_writeCplPkg("test2.hobj", pkg);
+		Hasm_writeCplPkg("test2.jrobj", pkg);
 		delete pkg;
 
 		int res = Hasm_link("test1.jrexe", {"test1.jrobj", "test2.jrobj"}, {});

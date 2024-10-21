@@ -136,6 +136,8 @@ namespace IdenSystem {
 		return dynCastPtr<ExprType, ExprType_Normal>(dynCastPtr<ExprType, ExprType_Normal>(cls->bsCls->deepCopy())->substitute(substMap));
 	}
 
+	u64 ExprType_Normal::size() const { return cls->size; }
+
 	bool ExprType_Normal::isGeneric() const {
 		return cls->isGeneric && substList.size() == 0;
 	}

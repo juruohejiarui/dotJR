@@ -59,6 +59,7 @@ namespace IdenSystem {
 		virtual bool isGeneric() const ;
 		virtual ExprTypePtr substitute(const SubstiMap &substMap) const = 0;
 		virtual ExprTypePtr_Ref toRef() const;
+		virtual u64 size() const = 0;
 		ExprType() = default;
 
 		// check whether two type expression is completely same
@@ -76,6 +77,7 @@ namespace IdenSystem {
 		virtual ExprTypePtr substitute(const SubstiMap &substMap) const;
 		virtual ~ExprType_Normal();
 		ExprTypePtr_Normal toBsType() const;
+		virtual u64 size() const;
 		ExprType_Normal();
 
 		virtual std::string toString(int dep = 0);
@@ -202,6 +204,8 @@ namespace IdenSystem {
 		// if this function is inherented from base type, then this attribute points to the definition of the original one
 		// otherwise, this points to itself.
 		Function *oriFunc = nullptr;
+		SubstiMap substToOri;
+		bool isVirtual = false;
 
 		Function();
 
@@ -217,6 +221,7 @@ namespace IdenSystem {
 		size_t offset;
 		
 		Variable *oriVar = nullptr;
+		SubstiMap substToOri;
 
 		Variable();
 

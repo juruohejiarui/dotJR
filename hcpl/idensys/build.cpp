@@ -258,21 +258,58 @@ namespace IdenSystem {
     bool analyClsGraph(IdenEnvironment *idenEnv, Class *cls) {
         idenEnv->setCurCls(cls);
         idenEnv->setCurNsp((Namespace *)cls->parent);
+		bool succ = true;
+
         for (ClsNode *clsNode : cls->nodes) {
+			// the i-th offset record the offset of a variable with size=2^i
+			u64 offset[4] = {0, 0, 0, 0};
+			// build the variable list
             for (VarDefNode *varDefBlk : clsNode->var) {
                 IdenAccessType access = varDefBlk->access;
                 for (VarNode *varDef : varDefBlk->vars) {
                     const std::string &name = varDef->token.strData;
+					Variable *var = new Variable();
+					var->node = varDef;
+					var->access = access;
+					setParent(var, cls);
                     {
                         auto searchRes = cls->child.getChildren(name);
                         if (searchRes.size() > 0) {
-                                
-                        }
+							if (searchRes.size() > 1 || !allSpecType(searchRes, IdenType::Var) || ((Variable *)searchRes[0])->oriVar->parent == cls) {
+								std::cout << std::format("line {0}: invalid operation: multiple definition of identifier: {1}\n",
+									varDef->token.lineId, name);
+								succ = false;
+								break;
+							}
+						}
+						
                     }
+					// override the variable identifier if it is from parent
+					// or create a new variable identifier
+					cls->child.var[name] = var; 
+					// parse the variable type, calculate the offset and size of this variable
+					if (varDef->varType == nullptr) {
+						std::cout << std::format("line {0}: class member must define type.\n", varDef->token.lineId);
+						succ = false;
+						break;
+					}
+					if (varDef->initExpr != nullptr) {
+						std::cout << std::format("line {0}: no support for initlization of this style.\n", varDef->token.lineId);
+						succ = false;
+						break;
+					}
+					var->varType = cvtToExprType(idenEnv, varDef->varType);
+					if (var->varType == nullptr) {
+						std::cout << std::format("line {0}: failed to parse variable type of variable \"{1}\"\n", varDef->varType->token.lineId, var->fullName);
+						succ = false;
+						break;
+					}
+					u64 size = std::min(8ull, var->varType->size());
                 }
             }
         }
-        return true;
+		if (!succ) return false;
+        return succ;
     }
 
 	IdenEnvironment *build(Namespace *glo, const std::vector<CplNode *> &roots) {
